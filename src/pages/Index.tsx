@@ -75,7 +75,7 @@ const Index = () => {
           className="rounded-2xl gradient-fire p-[1px]"
         >
           <div className="bg-card rounded-2xl p-6 text-center space-y-4">
-            <h3 className="text-xl font-display text-foreground">Join The Scroll</h3>
+            <h3 className="text-xl font-display text-foreground">Join Dumpster</h3>
             <p className="text-sm text-muted-foreground">
               Rate movies, write reviews, and help decide the worst of cinema.
             </p>

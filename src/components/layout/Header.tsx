@@ -9,7 +9,7 @@ export function Header() {
           animate={{ opacity: 1, y: 0 }}
           className="text-3xl font-gothic text-primary glow-pink"
         >
-          The Scroll
+          Dumpster
         </motion.h1>
       </div>
     </header>

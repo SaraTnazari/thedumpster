@@ -65,7 +65,7 @@ const Profile = () => {
           className="grid grid-cols-3 gap-3"
         >
           {[
-            { icon: FileText, label: "Scrolls Written", value: "12" },
+            { icon: FileText, label: "Reviews Written", value: "12" },
             { icon: Vote, label: "Purgatory Votes", value: "45" },
             { icon: Star, label: "Movies Rated", value: "28" },
           ].map((stat, index) => (

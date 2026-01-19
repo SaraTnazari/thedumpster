@@ -24,7 +24,7 @@ const Post = () => {
               </div>
               <h3 className="text-xl font-display text-foreground">Login Required</h3>
               <p className="text-sm text-muted-foreground">
-                You need to sign in before you can add movies to The Scroll.
+                You need to sign in before you can add movies to Dumpster.
               </p>
               <Link
                 to="/auth"
@@ -47,7 +47,7 @@ const Post = () => {
           animate={{ opacity: 1, y: 0 }}
           className="text-2xl font-display text-primary text-center glow-pink"
         >
-          Add to The Scroll
+          Add to Dumpster
         </motion.h2>
 
         <motion.form 
