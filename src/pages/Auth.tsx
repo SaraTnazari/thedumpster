@@ -2,10 +2,28 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Skull, Mail, Lock, User, Loader2 } from "lucide-react";
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+
+// Validation schemas
+const usernameSchema = z.string()
+  .min(3, "Username must be at least 3 characters")
+  .max(20, "Username must be less than 20 characters")
+  .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores");
+
+const emailSchema = z.string()
+  .trim()
+  .email("Invalid email address")
+  .max(255, "Email must be less than 255 characters");
+
+// Sanitize username from email (fallback)
+const sanitizeUsernameFromEmail = (email: string): string => {
+  const localPart = email.split("@")[0] || "";
+  return localPart.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20) || "user";
+};
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -13,17 +31,61 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
+  const [usernameError, setUsernameError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const validateInputs = (): { isValid: boolean; finalUsername: string } => {
+    // Validate email
+    const emailResult = emailSchema.safeParse(email);
+    if (!emailResult.success) {
+      toast({
+        title: "Invalid email",
+        description: emailResult.error.errors[0].message,
+        variant: "destructive",
+      });
+      return { isValid: false, finalUsername: "" };
+    }
+
+    // For signup, validate or sanitize username
+    if (!isLogin) {
+      if (username.trim()) {
+        const usernameResult = usernameSchema.safeParse(username.trim());
+        if (!usernameResult.success) {
+          setUsernameError(usernameResult.error.errors[0].message);
+          toast({
+            title: "Invalid username",
+            description: usernameResult.error.errors[0].message,
+            variant: "destructive",
+          });
+          return { isValid: false, finalUsername: "" };
+        }
+        setUsernameError(null);
+        return { isValid: true, finalUsername: username.trim() };
+      } else {
+        // Sanitize from email if no username provided
+        const sanitized = sanitizeUsernameFromEmail(email);
+        return { isValid: true, finalUsername: sanitized };
+      }
+    }
+
+    return { isValid: true, finalUsername: "" };
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
+    const { isValid, finalUsername } = validateInputs();
+    if (!isValid) {
+      setLoading(false);
+      return;
+    }
+
     try {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
-          email,
+          email: email.trim(),
           password,
         });
         if (error) throw error;
@@ -35,7 +97,7 @@ const Auth = () => {
       } else {
         const redirectUrl = `${window.location.origin}/`;
         const { data, error } = await supabase.auth.signUp({
-          email,
+          email: email.trim(),
           password,
           options: {
             emailRedirectTo: redirectUrl,
@@ -46,7 +108,7 @@ const Auth = () => {
         if (data.user) {
           await supabase.from("profiles").insert({
             user_id: data.user.id,
-            username: username || email.split("@")[0],
+            username: finalUsername,
           });
         }
 
@@ -112,9 +174,16 @@ const Auth = () => {
                     type="text"
                     placeholder="TrashConnoisseur69"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="pl-10 bg-muted border-border focus:border-primary rounded-xl"
+                    onChange={(e) => {
+                      setUsername(e.target.value);
+                      setUsernameError(null);
+                    }}
+                    maxLength={20}
+                    className={`pl-10 bg-muted border-border focus:border-primary rounded-xl ${usernameError ? 'border-destructive' : ''}`}
                   />
+                  {usernameError && (
+                    <p className="text-xs text-destructive mt-1">{usernameError}</p>
+                  )}
                 </div>
               </div>
             )}
