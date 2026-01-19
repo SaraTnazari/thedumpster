@@ -1,81 +1,65 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=UnifrakturMaguntia&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Dumpster - Industrial Grunge Design System */
+/* The Scroll - Neon Noir B-Movie Design System */
 
 @layer base {
   :root {
-    /* Dark mode is default - The Dumpster aesthetic */
-    --background: 0 0% 7%;
+    /* Deep dark background */
+    --background: 0 0% 6%;
     --foreground: 0 0% 95%;
 
-    --card: 0 0% 10%;
+    --card: 0 0% 8%;
     --card-foreground: 0 0% 95%;
 
-    --popover: 0 0% 10%;
+    --popover: 0 0% 8%;
     --popover-foreground: 0 0% 95%;
 
-    /* Neon Green - Toxic accent */
-    --primary: 115 100% 55%;
-    --primary-foreground: 0 0% 0%;
+    /* Neon Hot Pink - Primary accent */
+    --primary: 342 100% 50%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Burnt Orange - Fire accent */
-    --secondary: 25 100% 50%;
+    /* Toxic Neon Green - Success/Verified */
+    --secondary: 115 100% 55%;
     --secondary-foreground: 0 0% 0%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 55%;
 
-    --accent: 115 100% 55%;
-    --accent-foreground: 0 0% 0%;
+    --accent: 270 100% 60%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 95%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 15%;
-    --ring: 115 100% 55%;
+    --border: 0 0% 18%;
+    --input: 0 0% 12%;
+    --ring: 342 100% 50%;
 
-    --radius: 0.25rem;
+    --radius: 0.75rem;
 
-    /* Custom Dumpster tokens */
-    --neon-glow: 0 0 20px hsl(115 100% 55% / 0.5), 0 0 40px hsl(115 100% 55% / 0.3);
-    --fire-glow: 0 0 20px hsl(25 100% 50% / 0.5), 0 0 40px hsl(25 100% 50% / 0.3);
+    /* Custom tokens */
+    --neon-pink: 342 100% 50%;
+    --neon-green: 115 100% 55%;
+    --neon-purple: 270 100% 60%;
     
-    --sidebar-background: 0 0% 7%;
+    --glow-pink: 0 0 20px hsl(342 100% 50% / 0.5), 0 0 40px hsl(342 100% 50% / 0.3);
+    --glow-green: 0 0 20px hsl(115 100% 55% / 0.5), 0 0 40px hsl(115 100% 55% / 0.3);
+    --glow-purple: 0 0 20px hsl(270 100% 60% / 0.4), 0 0 40px hsl(270 100% 60% / 0.2);
+    
+    --gradient-fire: linear-gradient(135deg, hsl(342 100% 50%), hsl(270 100% 60%));
+    
+    --sidebar-background: 0 0% 6%;
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 115 100% 55%;
-    --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 0 0% 15%;
+    --sidebar-primary: 342 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 12%;
     --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 0 0% 20%;
-    --sidebar-ring: 115 100% 55%;
-  }
-
-  /* Light mode - rarely used, but defined */
-  .light {
-    --background: 0 0% 95%;
-    --foreground: 0 0% 7%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 7%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 7%;
-    --primary: 115 100% 40%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 25 100% 45%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 90%;
-    --muted-foreground: 0 0% 40%;
-    --accent: 115 100% 40%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 85%;
-    --input: 0 0% 90%;
-    --ring: 115 100% 40%;
+    --sidebar-border: 0 0% 18%;
+    --sidebar-ring: 342 100% 50%;
   }
 }
 
@@ -86,9 +70,6 @@
 
   body {
     @apply bg-background text-foreground font-body antialiased;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-    background-blend-mode: overlay;
-    background-size: 128px 128px;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -97,31 +78,49 @@
 }
 
 @layer utilities {
-  .neon-glow {
-    text-shadow: var(--neon-glow);
+  .font-gothic {
+    font-family: 'UnifrakturMaguntia', cursive;
+    text-transform: none;
+    letter-spacing: 0.05em;
   }
 
-  .neon-box-glow {
-    box-shadow: var(--neon-glow);
+  .glow-pink {
+    text-shadow: var(--glow-pink);
   }
 
-  .fire-glow {
-    text-shadow: var(--fire-glow);
+  .glow-green {
+    text-shadow: var(--glow-green);
   }
 
-  .fire-box-glow {
-    box-shadow: var(--fire-glow);
+  .glow-purple {
+    text-shadow: var(--glow-purple);
   }
 
-  .glass-dark {
-    @apply bg-card/80 backdrop-blur-md border border-border;
+  .box-glow-pink {
+    box-shadow: var(--glow-pink);
+  }
+
+  .box-glow-green {
+    box-shadow: var(--glow-green);
+  }
+
+  .gradient-fire {
+    background: var(--gradient-fire);
   }
 
   .text-gradient-fire {
-    background: linear-gradient(135deg, hsl(25 100% 60%), hsl(0 100% 50%));
+    background: var(--gradient-fire);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+
+  .glass-dark {
+    @apply bg-card/80 backdrop-blur-xl border border-border;
+  }
+
+  .glass-nav {
+    @apply bg-background/70 backdrop-blur-xl border-t border-border/50;
   }
 
   .animate-pulse-glow {
@@ -130,20 +129,38 @@
 
   @keyframes pulse-glow {
     0%, 100% {
-      box-shadow: 0 0 10px hsl(115 100% 55% / 0.3);
+      box-shadow: 0 0 10px hsl(342 100% 50% / 0.3);
     }
     50% {
-      box-shadow: 0 0 25px hsl(115 100% 55% / 0.6), 0 0 50px hsl(115 100% 55% / 0.3);
+      box-shadow: 0 0 25px hsl(342 100% 50% / 0.6), 0 0 50px hsl(342 100% 50% / 0.3);
     }
   }
 
-  @keyframes flicker {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.8; }
-    75% { opacity: 0.95; }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
   }
 
-  .animate-flicker {
-    animation: flicker 3s ease-in-out infinite;
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(90deg, transparent, hsl(342 100% 50% / 0.2), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }

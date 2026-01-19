@@ -16,9 +16,13 @@ export default {
       fontFamily: {
         display: ['"Bebas Neue"', 'Impact', 'sans-serif'],
         body: ['Inter', 'system-ui', 'sans-serif'],
+        gothic: ['"UnifrakturMaguntia"', 'cursive'],
       },
       colors: {
         border: "hsl(var(--border))",
+        "neon-pink": "hsl(342 100% 50%)",
+        "neon-green": "hsl(115 100% 55%)",
+        "neon-purple": "hsl(270 100% 60%)",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
