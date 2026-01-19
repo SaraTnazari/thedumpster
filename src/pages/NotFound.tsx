@@ -34,7 +34,7 @@ const NotFound = () => {
           className="inline-flex items-center gap-2 px-6 py-3 gradient-fire text-primary-foreground font-display tracking-wider rounded-xl hover:box-glow-pink transition-all duration-300"
         >
           <Home className="w-5 h-5" />
-          Back to The Scroll
+          Back to Dumpster
         </a>
       </motion.div>
     </div>

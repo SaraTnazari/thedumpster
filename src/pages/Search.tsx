@@ -29,7 +29,7 @@ const Search = () => {
           animate={{ opacity: 1, y: 0 }}
           className="text-2xl font-display text-primary text-center glow-pink"
         >
-          Search The Scroll
+          Search Dumpster
         </motion.h2>
         
         {/* Search Input */}

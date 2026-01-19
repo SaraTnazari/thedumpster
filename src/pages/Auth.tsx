@@ -113,7 +113,7 @@ const Auth = () => {
         }
 
         toast({
-          title: "Welcome to The Scroll!",
+          title: "Welcome to Dumpster!",
           description: "Your journey into cinematic trash begins now.",
         });
         navigate("/");
@@ -147,7 +147,7 @@ const Auth = () => {
             <Skull className="w-10 h-10 text-primary" />
           </motion.div>
           <h1 className="text-4xl font-gothic text-primary glow-pink">
-            The Scroll
+            Dumpster
           </h1>
           <p className="text-sm text-muted-foreground">
             {isLogin ? "Welcome back, connoisseur of trash" : "Join the garbage collectors"}
@@ -231,7 +231,7 @@ const Auth = () => {
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : isLogin ? (
-                "Enter The Scroll"
+                "Enter Dumpster"
               ) : (
                 "Create Account"
               )}
@@ -241,7 +241,7 @@ const Auth = () => {
 
         {/* Toggle */}
         <p className="text-center text-sm text-muted-foreground">
-          {isLogin ? "New to The Scroll?" : "Already have an account?"}{" "}
+          {isLogin ? "New to Dumpster?" : "Already have an account?"}{" "}
           <button
             type="button"
             onClick={() => setIsLogin(!isLogin)}
