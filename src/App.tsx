@@ -18,6 +18,7 @@ import Auth from "./pages/Auth";
 import Signup from "./pages/Signup";
 import Leaderboard from "./pages/Leaderboard";
 import MovieDetail from "./pages/MovieDetail";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -126,6 +127,7 @@ const App = () => {
                 <Route path="/signup" element={<Signup />} />
                 <Route path="/leaderboard" element={<Leaderboard />} />
                 <Route path="/movie/:id" element={<MovieDetail />} />
+                <Route path="/settings" element={<Settings />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AuthGuard>
