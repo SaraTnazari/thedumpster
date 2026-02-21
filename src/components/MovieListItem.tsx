@@ -21,6 +21,17 @@ export function MovieListItem({
   isVerified = false,
   index = 0
 }: MovieListItemProps) {
+  // Fix image URL: if it starts with http, use as-is; otherwise prepend TMDB base URL
+  const getImageUrl = (url?: string) => {
+    if (!url) return null;
+    if (url.startsWith("http")) {
+      return url;
+    }
+    return `https://image.tmdb.org/t/p/w500${url}`;
+  };
+
+  const imageUrl = getImageUrl(posterUrl);
+
   return (
     <Link to={`/movie/${id}`}>
       <motion.div 
@@ -32,9 +43,9 @@ export function MovieListItem({
       >
         {/* Thumbnail */}
         <div className="w-14 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
-          {posterUrl ? (
+          {imageUrl ? (
             <img 
-              src={posterUrl} 
+              src={imageUrl} 
               alt={title}
               className="w-full h-full object-cover"
             />

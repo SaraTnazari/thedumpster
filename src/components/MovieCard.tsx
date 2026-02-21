@@ -27,6 +27,17 @@ export function MovieCard({
     large: "w-44 h-64",
   };
 
+  // Fix image URL: if it starts with http, use as-is; otherwise prepend TMDB base URL
+  const getImageUrl = (url?: string) => {
+    if (!url) return null;
+    if (url.startsWith("http")) {
+      return url;
+    }
+    return `https://image.tmdb.org/t/p/w500${url}`;
+  };
+
+  const imageUrl = getImageUrl(posterUrl);
+
   return (
     <Link to={`/movie/${id}`}>
       <motion.div 
@@ -34,9 +45,9 @@ export function MovieCard({
         whileTap={{ scale: 0.98 }}
         className={`${sizeClasses[size]} relative rounded-2xl overflow-hidden bg-muted flex-shrink-0 group cursor-pointer`}
       >
-        {posterUrl ? (
+        {imageUrl ? (
           <img 
-            src={posterUrl} 
+            src={imageUrl} 
             alt={title}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
           />

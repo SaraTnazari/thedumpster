@@ -66,10 +66,52 @@
 @layer base {
   * {
     @apply border-border;
+    -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari */
+    user-select: none; /* Non-prefixed version, currently supported by Chrome, Edge, Opera and Firefox */
+  }
+
+  /* Re-enable text selection ONLY for inputs and text areas so users can type */
+  input, textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  html, body {
+    height: 100% !important;
+    width: 100% !important;
+    overflow: hidden !important; /* Forces the main window to never scroll */
+    overscroll-behavior: none !important; /* Kills the bounce */
+    overscroll-behavior-y: none !important;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #root {
+    height: 100vh !important;
+    overflow: hidden !important;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  html {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  ::-webkit-scrollbar {
+    display: none;
   }
 
   body {
     @apply bg-background text-foreground font-body antialiased;
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Prevent iOS zoom on focus */
+  input, textarea, select {
+    font-size: 16px !important;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -162,5 +204,22 @@
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Safe area insets for mobile devices (iOS notch, etc.) */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .pl-safe {
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+
+  .pr-safe {
+    padding-right: env(safe-area-inset-right, 0px);
   }
 }

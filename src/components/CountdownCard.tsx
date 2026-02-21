@@ -9,7 +9,7 @@ interface TimeLeft {
   seconds: number;
 }
 
-export function CountdownCard() {
+export function CountdownCard({ className }: { className?: string }) {
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export function CountdownCard() {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: 0.2 }}
-      className="relative overflow-hidden rounded-2xl gradient-fire p-[1px]"
+      className={`relative overflow-hidden rounded-2xl gradient-fire p-[1px] ${className || ''}`}
     >
       <div className="bg-card rounded-2xl p-6 space-y-4">
         <div className="flex items-center justify-center gap-2">

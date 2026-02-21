@@ -1,39 +1,84 @@
 import { motion } from "framer-motion";
-import { Search as SearchIcon, Filter, SlidersHorizontal } from "lucide-react";
+import { Search as SearchIcon, SlidersHorizontal, Loader2 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Input } from "@/components/ui/input";
 import { MovieListItem } from "@/components/MovieListItem";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
-const mockResults = [
-  { id: "1", title: "The Room", year: 2003, score: 9.8, isVerified: true },
-  { id: "2", title: "Birdemic: Shock and Terror", year: 2010, score: 9.5, isVerified: true },
-  { id: "3", title: "Troll 2", year: 1990, score: 9.3, isVerified: true },
-  { id: "4", title: "Manos: The Hands of Fate", year: 1966, score: 9.1, isVerified: true },
-  { id: "5", title: "Plan 9 From Outer Space", year: 1957, score: 8.9, isVerified: true },
-];
+interface MovieResult {
+  id: string;
+  title: string;
+  poster_url: string | null;
+  release_year: number | null;
+  status: "purgatory" | "verified";
+}
 
 const Search = () => {
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<"all" | "verified" | "purgatory">("all");
+  const [results, setResults] = useState<MovieResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  const filteredResults = mockResults.filter(movie => 
-    movie.title.toLowerCase().includes(query.toLowerCase())
-  );
+  const searchMovies = useCallback(async (searchQuery: string, filter: string) => {
+    if (!searchQuery.trim()) {
+      setResults([]);
+      setHasSearched(false);
+      return;
+    }
+
+    setLoading(true);
+    setHasSearched(true);
+
+    try {
+      let queryBuilder = supabase
+        .from("movies")
+        .select("*")
+        .ilike("title", `%${searchQuery}%`)
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      if (filter === "verified") {
+        queryBuilder = queryBuilder.eq("status", "verified");
+      } else if (filter === "purgatory") {
+        queryBuilder = queryBuilder.eq("status", "purgatory");
+      }
+
+      const { data, error } = await queryBuilder;
+
+      if (error) throw error;
+      setResults(data || []);
+    } catch (error: any) {
+      console.error("Error searching movies:", error);
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Debounced search
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      searchMovies(query, activeFilter);
+    }, 400);
+
+    return () => clearTimeout(timeoutId);
+  }, [query, activeFilter, searchMovies]);
 
   return (
     <AppLayout>
-      <div className="py-6 space-y-6">
-        <motion.h2 
+      <div className="py-6 space-y-6 pt-safe" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 24px)' }}>
+        <motion.h2
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-2xl font-display text-primary text-center glow-pink"
+          className="text-2xl font-display text-primary text-center"
         >
           Search Dumpster
         </motion.h2>
-        
+
         {/* Search Input */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
@@ -47,13 +92,15 @@ const Search = () => {
             onChange={(e) => setQuery(e.target.value)}
             className="pl-12 pr-12 h-12 bg-card border-border focus:border-primary rounded-xl text-foreground"
           />
-          <button className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors">
-            <SlidersHorizontal className="w-5 h-5" />
-          </button>
+          {loading && (
+            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          )}
         </motion.div>
 
         {/* Filter Pills */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
@@ -79,27 +126,39 @@ const Search = () => {
         </motion.div>
 
         {/* Results */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
           className="space-y-2"
         >
-          {query === "" ? (
+          {!hasSearched ? (
             <div className="glass-dark rounded-xl p-8 text-center">
               <p className="text-muted-foreground text-sm">
                 Start typing to discover the worst cinema has to offer.
               </p>
             </div>
-          ) : filteredResults.length === 0 ? (
+          ) : loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : results.length === 0 ? (
             <div className="glass-dark rounded-xl p-8 text-center">
               <p className="text-muted-foreground text-sm">
                 No trash found. Maybe it's not bad enough?
               </p>
             </div>
           ) : (
-            filteredResults.map((movie, index) => (
-              <MovieListItem key={movie.id} {...movie} index={index} />
+            results.map((movie, index) => (
+              <MovieListItem
+                key={movie.id}
+                id={movie.id}
+                title={movie.title}
+                posterUrl={movie.poster_url || undefined}
+                year={movie.release_year || undefined}
+                isVerified={movie.status === "verified"}
+                index={index}
+              />
             ))
           )}
         </motion.div>

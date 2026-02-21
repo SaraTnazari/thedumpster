@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Skull, Mail, Lock, User, Loader2 } from "lucide-react";
+import { Skull, Mail, Lock, User, Loader2, ChevronLeft } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -130,7 +130,19 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 pt-safe pb-safe relative">
+      {/* Back Button */}
+      <motion.button
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        onClick={() => navigate(-1)}
+        className="absolute top-4 left-4 z-10 p-2 rounded-full bg-card/80 backdrop-blur-sm hover:bg-card transition-colors"
+        style={{ top: `calc(env(safe-area-inset-top, 0px) + 1rem)` }}
+        aria-label="Go back"
+      >
+        <ChevronLeft className="w-6 h-6 text-foreground" />
+      </motion.button>
+      
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

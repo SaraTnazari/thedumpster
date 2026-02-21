@@ -1,11 +1,157 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { User, LogIn, FileText, Vote, Star, Award, Settings } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Link } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
+import { UpgradeModal } from "@/components/UpgradeModal";
 
 const Profile = () => {
-  // This will be replaced with real auth state
-  const isLoggedIn = false;
+  const navigate = useNavigate();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<{
+    username: string | null;
+    avatar_url: string | null;
+    bio: string | null;
+  } | null>(null);
+  const [stats, setStats] = useState({
+    reviewsWritten: 0,
+    purgatoryVotes: 0,
+    moviesRated: 0,
+  });
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [isPro, setIsPro] = useState(false);
+
+  useEffect(() => {
+    // Check if user is Pro
+    const checkProStatus = () => {
+      const proStatus = localStorage.getItem('isProUser') === 'true';
+      setIsPro(proStatus);
+    };
+    
+    checkProStatus();
+    
+    // Listen for storage changes (when purchase completes)
+    window.addEventListener('storage', checkProStatus);
+    
+    // Also listen for custom event in case purchase happens in same window
+    const handleStorageChange = () => checkProStatus();
+    window.addEventListener('localStorageChange', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', checkProStatus);
+      window.removeEventListener('localStorageChange', handleStorageChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    const fetchStats = async (userId: string) => {
+      try {
+        // Count reviews written
+        const { count: reviewsCount, error: reviewsError } = await supabase
+          .from("reviews")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", userId);
+
+        if (reviewsError) throw reviewsError;
+
+        // Count unique movies rated (distinct movie_ids)
+        const { data: reviewsData, error: moviesError } = await supabase
+          .from("reviews")
+          .select("movie_id")
+          .eq("user_id", userId);
+
+        if (moviesError) throw moviesError;
+        const uniqueMovies = new Set(reviewsData?.map(r => r.movie_id) || []);
+        const moviesRatedCount = uniqueMovies.size;
+
+        // Count purgatory votes
+        const { count: votesCount, error: votesError } = await supabase
+          .from("purgatory_votes")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", userId);
+
+        if (votesError) throw votesError;
+
+        setStats({
+          reviewsWritten: reviewsCount || 0,
+          moviesRated: moviesRatedCount,
+          purgatoryVotes: votesCount || 0,
+        });
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+      }
+    };
+
+    const checkAuthAndFetchStats = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsLoggedIn(!!session);
+      
+      if (session?.user) {
+        await fetchStats(session.user.id);
+        
+        // Fetch profile data
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("username, avatar_url, bio")
+          .eq("user_id", session.user.id)
+          .single();
+        
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error("Error fetching profile:", profileError);
+        } else {
+          setProfile(profileData || { username: null, avatar_url: null, bio: null });
+        }
+      } else {
+        setStats({ reviewsWritten: 0, purgatoryVotes: 0, moviesRated: 0 });
+        setProfile(null);
+      }
+      
+      setLoading(false);
+    };
+
+    checkAuthAndFetchStats();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setIsLoggedIn(!!session);
+      if (session?.user) {
+        await fetchStats(session.user.id);
+        
+        // Fetch profile data
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("username, avatar_url, bio")
+          .eq("user_id", session.user.id)
+          .single();
+        
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error("Error fetching profile:", profileError);
+        } else {
+          setProfile(profileData || { username: null, avatar_url: null, bio: null });
+        }
+      } else {
+        setStats({ reviewsWritten: 0, purgatoryVotes: 0, moviesRated: 0 });
+        setProfile(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="py-6 space-y-6">
+          <div className="flex items-center justify-center min-h-[200px]">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!isLoggedIn) {
     return (
@@ -38,7 +184,7 @@ const Profile = () => {
 
   return (
     <AppLayout>
-      <div className="py-6 space-y-6">
+      <div className="py-6 space-y-6 pt-safe" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 24px)' }}>
         {/* Avatar & Identity */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -46,14 +192,31 @@ const Profile = () => {
           className="text-center space-y-3"
         >
           <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-primary to-neon-purple p-[2px]">
-            <div className="w-full h-full rounded-full bg-card flex items-center justify-center">
-              <User className="w-10 h-10 text-foreground" />
-            </div>
+            <Avatar className="w-full h-full">
+              <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.username || "User"} />
+              <AvatarFallback className="bg-card">
+                <User className="w-10 h-10 text-foreground" />
+              </AvatarFallback>
+            </Avatar>
           </div>
-          <h2 className="text-2xl font-display text-foreground">TrashPanda42</h2>
-          <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-primary/20 border border-primary/30">
-            <Award className="w-4 h-4 text-primary" />
-            <span className="text-sm text-primary font-medium">Trash Connoisseur</span>
+          <h2 className="text-2xl font-display text-foreground">
+            {profile?.username || "TrashPanda"}
+          </h2>
+          {profile?.bio && (
+            <p className="text-sm text-muted-foreground max-w-md mx-auto px-4">
+              {profile.bio}
+            </p>
+          )}
+          <div 
+            onClick={() => setShowUpgrade(true)}
+            className={`inline-flex items-center gap-2 px-4 py-1 rounded-full cursor-pointer transition-colors ${
+              isPro 
+                ? "bg-gradient-to-r from-yellow-400 to-yellow-600 border border-yellow-500/50 shadow-[0_0_20px_rgba(250,204,21,0.5)] hover:shadow-[0_0_30px_rgba(250,204,21,0.7)]"
+                : "bg-primary/20 border border-primary/30 hover:bg-primary/30"
+            }`}
+          >
+            <Award className={`w-4 h-4 ${isPro ? "text-yellow-900" : "text-primary"}`} />
+            <span className={`text-sm font-medium ${isPro ? "text-yellow-900" : "text-primary"}`}>Trash Connoisseur</span>
           </div>
         </motion.div>
 
@@ -65,16 +228,49 @@ const Profile = () => {
           className="grid grid-cols-3 gap-3"
         >
           {[
-            { icon: FileText, label: "Reviews Written", value: "12" },
-            { icon: Vote, label: "Purgatory Votes", value: "45" },
-            { icon: Star, label: "Movies Rated", value: "28" },
-          ].map((stat, index) => (
-            <div key={stat.label} className="glass-dark rounded-xl p-4 text-center space-y-2">
-              <stat.icon className="w-5 h-5 text-primary mx-auto" />
-              <div className="text-2xl font-display text-foreground">{stat.value}</div>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{stat.label}</div>
-            </div>
-          ))}
+            { 
+              icon: FileText, 
+              label: "Reviews Written", 
+              value: stats.reviewsWritten.toString(),
+              clickable: true,
+              onClick: () => navigate("/profile/history"),
+            },
+            { 
+              icon: Vote, 
+              label: "Purgatory Votes", 
+              value: stats.purgatoryVotes.toString(),
+              clickable: false,
+            },
+            { 
+              icon: Star, 
+              label: "Movies Rated", 
+              value: stats.moviesRated.toString(),
+              clickable: true,
+              onClick: () => navigate("/profile/history"),
+            },
+          ].map((stat, index) => {
+            const StatComponent = (
+              <div className={`glass-dark rounded-xl p-4 text-center space-y-2 ${stat.clickable ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}>
+                <stat.icon className="w-5 h-5 text-primary mx-auto" />
+                <div className="text-2xl font-display text-foreground">{stat.value}</div>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{stat.label}</div>
+              </div>
+            );
+
+            if (stat.clickable && stat.onClick) {
+              return (
+                <div key={stat.label} onClick={stat.onClick}>
+                  {StatComponent}
+                </div>
+              );
+            }
+
+            return (
+              <div key={stat.label}>
+                {StatComponent}
+              </div>
+            );
+          })}
         </motion.div>
 
         {/* Menu */}
@@ -87,7 +283,7 @@ const Profile = () => {
           {[
             { icon: Award, label: "Hall of Shame", to: "/hall-of-shame" },
             { icon: Star, label: "My Badges", to: "/badges" },
-            { icon: Settings, label: "Edit Profile", to: "/settings" },
+            { icon: Settings, label: "Edit Profile", to: "/profile/edit" },
           ].map((item) => (
             <Link
               key={item.label}
@@ -100,6 +296,12 @@ const Profile = () => {
           ))}
         </motion.div>
       </div>
+      {showUpgrade && (
+        <UpgradeModal 
+          open={showUpgrade} 
+          onOpenChange={setShowUpgrade}
+        />
+      )}
     </AppLayout>
   );
 };
