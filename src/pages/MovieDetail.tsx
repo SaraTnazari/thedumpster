@@ -326,13 +326,7 @@ const MovieDetail = () => {
     setSubmitting(true);
 
     try {
-      // Get user name from localStorage
-      const userName = localStorage.getItem('dumpster_username') || 'Anonymous';
-      
-      // Check if user is Pro for is_vip field
-      const userIsVip = localStorage.getItem('isProUser') === 'true';
-
-      // Step 5: Upsert review
+      // Step 5: Upsert review (only columns that exist in the schema)
       const { error: reviewError } = await supabase
         .from("reviews")
         .upsert({
@@ -340,8 +334,6 @@ const MovieDetail = () => {
           movie_id: id,
           shittiness_score: shittinessScore,
           review_text: trimmedReviewText,
-          user_name: userName,
-          is_vip: userIsVip,
         }, {
           onConflict: "user_id,movie_id",
         });
@@ -353,14 +345,12 @@ const MovieDetail = () => {
 
       console.log("[MovieDetail] Review saved successfully");
 
-      // Check if user is Pro and trigger confetti
-      if (userIsVip) {
-        confetti({
-          particleCount: 150,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-      }
+      // Trigger confetti on successful review
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
 
       // Step 6: Show success message
       const isUpdate = !!userReview;
