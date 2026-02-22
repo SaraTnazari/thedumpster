@@ -1,16 +1,98 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ChevronLeft, Crown, Check, CreditCard } from "lucide-react";
+import { ChevronLeft, Crown, Check, CreditCard, Loader2 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import confetti from "canvas-confetti";
 
 const BillingSettings = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { toast } = useToast();
   const { plan, isPro, loading } = useSubscription();
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+
+  // Handle Stripe redirect back
+  useEffect(() => {
+    const success = searchParams.get("success");
+    const sessionId = searchParams.get("session_id");
+
+    if (success === "true" && sessionId) {
+      setVerifying(true);
+      // Verify the payment and activate Pro
+      const verifyPayment = async () => {
+        try {
+          const response = await fetch("/api/verify-session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId }),
+          });
+
+          const data = await response.json();
+
+          if (data.success && data.userId) {
+            // Update subscription in Supabase
+            const { data: existingSub } = await supabase
+              .from("user_subscriptions")
+              .select("id")
+              .eq("user_id", data.userId)
+              .maybeSingle();
+
+            if (existingSub) {
+              await supabase
+                .from("user_subscriptions")
+                .update({
+                  plan: "pro",
+                  status: "active",
+                  stripe_customer_id: data.customerId,
+                  stripe_subscription_id: data.subscriptionId,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("user_id", data.userId);
+            } else {
+              await supabase
+                .from("user_subscriptions")
+                .insert({
+                  user_id: data.userId,
+                  plan: "pro",
+                  status: "active",
+                  stripe_customer_id: data.customerId,
+                  stripe_subscription_id: data.subscriptionId,
+                });
+            }
+
+            localStorage.setItem("isProUser", "true");
+            window.dispatchEvent(new Event("localStorageChange"));
+
+            confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 } });
+
+            toast({
+              title: "Welcome to Pro!",
+              description: "Your subscription is now active. Enjoy unlimited features!",
+            });
+          }
+        } catch (err) {
+          console.error("Payment verification error:", err);
+          toast({
+            title: "Verification issue",
+            description: "Payment received. Your account will be updated shortly.",
+          });
+        } finally {
+          setVerifying(false);
+          // Clean up URL
+          navigate("/billing", { replace: true });
+        }
+      };
+
+      verifyPayment();
+    }
+  }, [searchParams, navigate, toast]);
 
   const freeFeatures = [
     "5 reviews per day",
@@ -25,14 +107,16 @@ const BillingSettings = () => {
     "Follow other users' activity",
     "Premium badges",
     "Golden profile styling",
-    "Priority support",
   ];
 
-  if (loading) {
+  if (loading || verifying) {
     return (
       <AppLayout>
-        <div className="py-6 flex items-center justify-center min-h-[200px]">
+        <div className="py-6 flex flex-col items-center justify-center min-h-[200px] gap-3">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          {verifying && (
+            <p className="text-sm text-muted-foreground">Verifying your payment...</p>
+          )}
         </div>
       </AppLayout>
     );
