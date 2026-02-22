@@ -21,9 +21,11 @@ interface ReviewData {
   movie_id: string;
   shittiness_score: number;
   review_text: string | null;
-  movie_title: string | null;
-  poster_path: string | null;
   created_at: string;
+  movies: {
+    title: string;
+    poster_url: string | null;
+  } | null;
 }
 
 const UserProfile = () => {
@@ -58,10 +60,10 @@ const UserProfile = () => {
         if (profileError) throw profileError;
         setProfile(profileData);
 
-        // Fetch their reviews
+        // Fetch their reviews with movie data
         const { data: reviewsData } = await supabase
           .from("reviews")
-          .select("*")
+          .select("id, movie_id, shittiness_score, review_text, created_at, movies(title, poster_url)")
           .eq("user_id", userId)
           .order("created_at", { ascending: false })
           .limit(20);
@@ -181,7 +183,7 @@ const UserProfile = () => {
               </div>
             ) : (
               reviews.map((review, index) => {
-                const posterUrl = getImageUrl(review.poster_path);
+                const posterUrl = getImageUrl(review.movies?.poster_url || null);
                 const rating = Math.round(review.shittiness_score / 2);
 
                 return (
@@ -207,7 +209,7 @@ const UserProfile = () => {
                     {/* Content */}
                     <div className="flex-1 min-w-0 space-y-1">
                       <h4 className="font-display text-foreground text-sm truncate">
-                        {review.movie_title || "Unknown Movie"}
+                        {review.movies?.title || "Unknown Movie"}
                       </h4>
                       <div className="flex items-center gap-1">
                         {[1, 2, 3, 4, 5].map((v) => (

@@ -19,13 +19,14 @@ interface Movie {
 interface RecentReview {
   id: string;
   movie_id: string;
-  movie_title: string | null;
-  poster_path: string | null;
+  user_id: string;
   shittiness_score: number;
   review_text: string | null;
-  user_name: string | null;
-  is_vip: boolean | null;
   created_at: string;
+  movies: {
+    title: string;
+    poster_url: string | null;
+  } | null;
 }
 
 const Index = () => {
@@ -60,7 +61,7 @@ const Index = () => {
       try {
         const { data, error } = await supabase
           .from("reviews")
-          .select("*")
+          .select("id, movie_id, user_id, shittiness_score, review_text, created_at, movies(title, poster_url)")
           .order("created_at", { ascending: false })
           .limit(5);
 
@@ -170,9 +171,9 @@ const Index = () => {
                 
                 <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
                   {recentReviews.map((review, index) => {
-                    const posterUrl = getImageUrl(review.poster_path);
+                    const posterUrl = getImageUrl(review.movies?.poster_url || null);
                     const rating = Math.round(review.shittiness_score / 2); // Convert 0-10 to 1-5
-                    
+
                     return (
                       <motion.div
                         key={review.id}
@@ -180,11 +181,7 @@ const Index = () => {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.1 * index }}
                         onClick={() => navigate(`/movie/${review.movie_id}`)}
-                        className={`flex-shrink-0 w-64 bg-card rounded-xl p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
-                          review.is_vip 
-                            ? "border-2 border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]" 
-                            : ""
-                        }`}
+                        className="flex-shrink-0 w-64 bg-card rounded-xl p-4 cursor-pointer hover:bg-muted/50 transition-colors"
                       >
                         {/* Poster and Title */}
                         <div className="flex gap-3 mb-3">
@@ -192,7 +189,7 @@ const Index = () => {
                             {posterUrl ? (
                               <img
                                 src={posterUrl}
-                                alt={review.movie_title || "Movie"}
+                                alt={review.movies?.title || "Movie"}
                                 className="w-full h-full object-cover"
                               />
                             ) : (
@@ -203,7 +200,7 @@ const Index = () => {
                           </div>
                           <div className="flex-1 min-w-0">
                             <h3 className="font-display text-foreground font-bold text-sm line-clamp-2 mb-2">
-                              {review.movie_title || "Unknown Movie"}
+                              {review.movies?.title || "Unknown Movie"}
                             </h3>
                             {/* Trash Rating */}
                             <div className="flex items-center gap-1">
@@ -228,13 +225,10 @@ const Index = () => {
                           </p>
                         )}
                         
-                        {/* User Name */}
-                        {review.user_name && (
-                          <p className="text-xs text-primary font-medium flex items-center gap-1">
-                            {review.is_vip && <span>👑</span>}
-                            <span>— {review.user_name}</span>
-                          </p>
-                        )}
+                        {/* Score Badge */}
+                        <p className="text-xs text-primary font-medium">
+                          Score: {review.shittiness_score}/10
+                        </p>
                       </motion.div>
                     );
                   })}

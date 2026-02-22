@@ -223,24 +223,16 @@ const MovieDetail = () => {
       // Convert 1-5 rating to 0-10 scale (1 = 2, 2 = 4, 3 = 6, 4 = 8, 5 = 10)
       const shittinessScore = rating * 2;
 
-      // Get user name from localStorage
-      const userName = localStorage.getItem('dumpster_username') || 'Anonymous';
-      
-      // Check if user is Pro for is_vip field
-      const userIsVip = localStorage.getItem('isProUser') === 'true';
-
-      // Insert review into Supabase
+      // Insert review into Supabase (only columns that exist in the schema)
       const { error: insertError } = await supabase
         .from("reviews")
-        .insert({
+        .upsert({
           movie_id: id,
           user_id: session.user.id,
           shittiness_score: shittinessScore,
           review_text: content || null,
-          movie_title: movie?.title || null,
-          poster_path: movie?.poster_url || null,
-          user_name: userName,
-          is_vip: userIsVip,
+        }, {
+          onConflict: "user_id,movie_id",
         });
 
       if (insertError) {
@@ -256,14 +248,12 @@ const MovieDetail = () => {
       // Refetch reviews to update the list
       await fetchReviews();
 
-      // Check if user is Pro and trigger confetti
-      if (userIsVip) {
-        confetti({
-          particleCount: 150,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-      }
+      // Trigger confetti on successful review
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
 
       toast({
         title: "Review submitted!",
