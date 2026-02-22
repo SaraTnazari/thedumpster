@@ -239,7 +239,7 @@ const MovieDetail = () => {
         console.error("Error inserting review:", insertError);
         toast({
           title: "Error",
-          description: "Failed to submit review",
+          description: insertError.message || "Failed to submit review",
           variant: "destructive",
         });
         return;
@@ -263,7 +263,7 @@ const MovieDetail = () => {
       console.error("Error in handleAddReviewSubmit:", err);
       toast({
         title: "Error",
-        description: "Failed to submit review",
+        description: err.message || "Failed to submit review",
         variant: "destructive",
       });
     }

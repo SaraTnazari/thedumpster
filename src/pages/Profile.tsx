@@ -8,9 +8,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useToast } from "@/hooks/use-toast";
 
 const Profile = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<{
@@ -25,6 +27,25 @@ const Profile = () => {
   });
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [isPro, setIsPro] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      localStorage.removeItem('isProUser');
+      localStorage.removeItem('dumpster_username');
+      toast({
+        title: "Signed out",
+        description: "You've been logged out successfully.",
+      });
+      navigate("/");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to sign out",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     // Check if user is Pro
@@ -297,6 +318,15 @@ const Profile = () => {
               <span className="font-medium text-foreground">{item.label}</span>
             </Link>
           ))}
+
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-4 p-4 rounded-xl bg-card hover:bg-red-500/10 transition-colors w-full text-left"
+          >
+            <LogOut className="w-5 h-5 text-red-400" />
+            <span className="font-medium text-red-400">Sign Out</span>
+          </button>
         </motion.div>
       </div>
       {showUpgrade && (
