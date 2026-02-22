@@ -16,6 +16,9 @@ import {
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useReviewLimit } from "@/hooks/useReviewLimit";
+import { ReviewLimitWarning } from "@/components/ReviewLimitWarning";
+import { UpgradeModal } from "@/components/UpgradeModal";
 
 interface TMDBMovie {
   id: number;
@@ -37,6 +40,8 @@ const Post = () => {
   const [rating, setRating] = useState([5.0]);
   const [reviewText, setReviewText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const { canReview, incrementCount } = useReviewLimit();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -121,6 +126,12 @@ const Post = () => {
   const handleSubmitReview = async () => {
     if (!selectedMovie) return;
 
+    // Check daily review limit
+    if (!canReview) {
+      setShowUpgrade(true);
+      return;
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
       toast({
@@ -197,6 +208,9 @@ const Post = () => {
 
       if (reviewError) throw reviewError;
 
+      // Increment daily review count
+      await incrementCount();
+
       toast({
         title: "Review submitted!",
         description: `Your review for ${selectedMovie.title} has been saved.`,
@@ -268,6 +282,9 @@ const Post = () => {
   return (
     <AppLayout>
       <div className="pb-6 space-y-6 flex flex-col pt-safe" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }}>
+
+        {/* Review Limit Warning */}
+        <ReviewLimitWarning onUpgrade={() => setShowUpgrade(true)} />
 
         {/* Search Bar */}
         <motion.div
@@ -452,6 +469,9 @@ const Post = () => {
           </DialogContent>
         </Dialog>
       </div>
+      {showUpgrade && (
+        <UpgradeModal open={showUpgrade} onOpenChange={setShowUpgrade} />
+      )}
     </AppLayout>
   );
 };

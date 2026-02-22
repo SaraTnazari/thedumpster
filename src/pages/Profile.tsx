@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { User, LogIn, FileText, Vote, Star, Award, Settings } from "lucide-react";
+import { User, LogIn, FileText, Vote, Star, Award, Settings, Users, CreditCard, Crown, LogOut } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { useSubscription } from "@/hooks/useSubscription";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -281,8 +282,10 @@ const Profile = () => {
           className="space-y-2"
         >
           {[
+            { icon: Users, label: "Discover People", to: "/discover" },
             { icon: Award, label: "Hall of Shame", to: "/hall-of-shame" },
             { icon: Star, label: "My Badges", to: "/badges" },
+            { icon: CreditCard, label: "Billing & Plan", to: "/billing" },
             { icon: Settings, label: "Edit Profile", to: "/profile/edit" },
           ].map((item) => (
             <Link

@@ -19,6 +19,9 @@ import Signup from "./pages/Signup";
 import Leaderboard from "./pages/Leaderboard";
 import MovieDetail from "./pages/MovieDetail";
 import Settings from "./pages/Settings";
+import Discover from "./pages/Discover";
+import UserProfile from "./pages/UserProfile";
+import BillingSettings from "./pages/BillingSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -128,6 +131,9 @@ const App = () => {
                 <Route path="/leaderboard" element={<Leaderboard />} />
                 <Route path="/movie/:id" element={<MovieDetail />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/discover" element={<Discover />} />
+                <Route path="/user/:userId" element={<UserProfile />} />
+                <Route path="/billing" element={<BillingSettings />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AuthGuard>
