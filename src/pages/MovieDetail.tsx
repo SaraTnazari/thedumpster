@@ -175,95 +175,125 @@ const MovieDetail = () => {
   }, [id]);
 
   const handleAddReviewSubmit = async (rating: number, content: string) => {
-    if (!id) {
-      toast({ title: "Error", description: "Movie ID missing", variant: "destructive" });
-      throw new Error("Movie ID missing");
-    }
-
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-    if (sessionError || !session?.user) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to submit a review",
-        variant: "destructive",
-      });
-      throw new Error("Not logged in");
-    }
-
-    const shittinessScore = Math.round(rating * 2);
-
-    // Check if user already has a review for this movie
-    const { data: existingReview } = await supabase
-      .from("reviews")
-      .select("id")
-      .eq("movie_id", id)
-      .eq("user_id", session.user.id)
-      .maybeSingle();
-
-    let submitError: any = null;
-
-    if (existingReview) {
-      // Update existing review
-      const { error } = await supabase
-        .from("reviews")
-        .update({
-          shittiness_score: shittinessScore,
-          review_text: content || null,
-        })
-        .eq("id", existingReview.id);
-      submitError = error;
-    } else {
-      // Insert new review
-      const { error } = await supabase
-        .from("reviews")
-        .insert({
-          movie_id: id,
-          user_id: session.user.id,
-          shittiness_score: shittinessScore,
-          review_text: content || null,
-        });
-      submitError = error;
-    }
-
-    if (submitError) {
-      const msg = submitError.message || submitError.details || submitError.hint || JSON.stringify(submitError);
-      toast({
-        title: "Review Error",
-        description: msg,
-        variant: "destructive",
-      });
-      throw new Error(msg);
-    }
-
-    await fetchReviews();
-
     try {
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 }
+      if (!id) {
+        toast({ title: "Debug", description: "Movie ID is missing from URL", variant: "destructive" });
+        throw new Error("Movie ID missing");
+      }
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.error("[REVIEW DEBUG] session:", session?.user?.id, "movieId:", id, "rating:", rating);
+
+      if (sessionError || !session?.user) {
+        toast({
+          title: "Debug",
+          description: "Session error: " + (sessionError?.message || "No user session found"),
+          variant: "destructive",
+        });
+        throw new Error("Not logged in");
+      }
+
+      const shittinessScore = Math.round(rating * 2);
+      console.error("[REVIEW DEBUG] shittinessScore:", shittinessScore);
+
+      // Check if user already has a review for this movie
+      const { data: existingReview, error: checkError } = await supabase
+        .from("reviews")
+        .select("id")
+        .eq("movie_id", id)
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error("[REVIEW DEBUG] Check existing review error:", JSON.stringify(checkError));
+        toast({
+          title: "Check Error",
+          description: "Could not check existing review: " + (checkError.message || JSON.stringify(checkError)),
+          variant: "destructive",
+        });
+        throw new Error(checkError.message);
+      }
+
+      console.error("[REVIEW DEBUG] existingReview:", existingReview);
+
+      let submitError: any = null;
+
+      if (existingReview) {
+        console.error("[REVIEW DEBUG] Updating existing review:", existingReview.id);
+        const { error } = await supabase
+          .from("reviews")
+          .update({
+            shittiness_score: shittinessScore,
+            review_text: content || null,
+          })
+          .eq("id", existingReview.id);
+        submitError = error;
+      } else {
+        console.error("[REVIEW DEBUG] Inserting new review");
+        const { error } = await supabase
+          .from("reviews")
+          .insert({
+            movie_id: id,
+            user_id: session.user.id,
+            shittiness_score: shittinessScore,
+            review_text: content || null,
+          });
+        submitError = error;
+      }
+
+      if (submitError) {
+        console.error("[REVIEW DEBUG] Submit error:", JSON.stringify(submitError));
+        const msg = submitError.message || submitError.details || submitError.hint || JSON.stringify(submitError);
+        toast({
+          title: "Submit Error",
+          description: msg,
+          variant: "destructive",
+        });
+        throw new Error(msg);
+      }
+
+      console.error("[REVIEW DEBUG] Review submitted successfully!");
+
+      await fetchReviews();
+
+      try {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      } catch (_) {
+        // confetti is optional
+      }
+
+      toast({
+        title: "Review submitted!",
+        description: "Your review has been saved.",
       });
-    } catch (_) {
-      // confetti is optional
-    }
 
-    toast({
-      title: "Review submitted!",
-      description: "Your review has been saved.",
-    });
+      setAddReviewModalOpen(false);
 
-    setAddReviewModalOpen(false);
+      const { data: updatedReview } = await supabase
+        .from("reviews")
+        .select("id, user_id, shittiness_score, review_text, created_at")
+        .eq("movie_id", id)
+        .eq("user_id", session.user.id)
+        .maybeSingle();
 
-    const { data: updatedReview } = await supabase
-      .from("reviews")
-      .select("id, user_id, shittiness_score, review_text, created_at")
-      .eq("movie_id", id)
-      .eq("user_id", session.user.id)
-      .maybeSingle();
-
-    if (updatedReview) {
-      setUserReview(updatedReview);
+      if (updatedReview) {
+        setUserReview(updatedReview);
+      }
+    } catch (err: any) {
+      console.error("[REVIEW DEBUG] Caught error:", err);
+      // Only show toast if not already shown above
+      if (!err.message?.includes("Movie ID") && !err.message?.includes("logged in")) {
+        toast({
+          title: "Unexpected Error",
+          description: err.message || "Something went wrong: " + String(err),
+          variant: "destructive",
+        });
+      }
+      throw err;
     }
   };
 
