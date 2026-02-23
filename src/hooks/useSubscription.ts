@@ -33,7 +33,7 @@ export function useSubscription() {
           try {
             const purchases = Purchases.configure(RC_API_KEY, session.user.id);
             const customerInfo = await purchases.getCustomerInfo();
-            const isPro = customerInfo.entitlements.active["pro"] !== undefined;
+            const isPro = customerInfo.entitlements.active["Dumpster Pro"] !== undefined;
 
             if (isPro) {
               setState({ plan: "pro", status: "active", loading: false, isPro: true });

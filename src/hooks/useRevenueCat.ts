@@ -38,7 +38,7 @@ export function useRevenueCat() {
       const customerInfo = await purchases.getCustomerInfo();
 
       // Check for "pro" entitlement (configure this in RevenueCat dashboard)
-      const isPro = customerInfo.entitlements.active["pro"] !== undefined;
+      const isPro = customerInfo.entitlements.active["Dumpster Pro"] !== undefined;
 
       setState((prev) => ({ ...prev, isPro, loading: false }));
     } catch (err) {
