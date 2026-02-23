@@ -44,7 +44,7 @@ const Discover = () => {
         if (error) throw error;
         setUsers(data || []);
       } catch (err) {
-        console.error("Error fetching users:", err);
+        // Error handled silently
       } finally {
         setLoading(false);
       }
@@ -70,7 +70,7 @@ const Discover = () => {
         if (error) throw error;
         setUsers(data || []);
       } catch (err) {
-        console.error("Error searching users:", err);
+        // Error handled silently
       } finally {
         setSearching(false);
       }

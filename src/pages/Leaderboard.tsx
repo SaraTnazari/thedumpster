@@ -5,6 +5,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { MovieListItem } from "@/components/MovieListItem";
 import { supabase } from "@/integrations/supabase/client";
+import { getImageUrl } from "@/lib/image-utils";
 
 interface MovieWithRating {
   id: string;
@@ -39,15 +40,6 @@ const PodiumCard = ({
   };
 
   const RankIcon = rank === 1 ? Crown : rank === 2 ? Medal : Award;
-
-  // Fix image URL: if it starts with http, use as-is; otherwise prepend TMDB base URL
-  const getImageUrl = (url: string | null) => {
-    if (!url) return null;
-    if (url.startsWith("http")) {
-      return url;
-    }
-    return `https://image.tmdb.org/t/p/w500${url}`;
-  };
 
   const imageUrl = getImageUrl(movie.poster_url);
 
@@ -160,8 +152,8 @@ const Leaderboard = () => {
           .slice(0, 10);
 
         setTopMovies(moviesWithRatings);
-      } catch (error: any) {
-        console.error("Error fetching top movies:", error);
+      } catch {
+        // Error fetching leaderboard
       } finally {
         setLoading(false);
       }
@@ -178,15 +170,6 @@ const Leaderboard = () => {
   const orderedTop = topThree.length >= 3 
     ? [topThree[1], topThree[0], topThree[2]]
     : topThree;
-
-  // Helper function to get image URL
-  const getImageUrl = (url: string | null) => {
-    if (!url) return null;
-    if (url.startsWith("http")) {
-      return url;
-    }
-    return `https://image.tmdb.org/t/p/w500${url}`;
-  };
 
   return (
     <AppLayout>

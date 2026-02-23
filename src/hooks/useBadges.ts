@@ -106,7 +106,7 @@ export function useBadges() {
 
       setBadges(badgeStates);
     } catch (err) {
-      console.error("Badges error:", err);
+      // Error handled silently
     } finally {
       setLoading(false);
     }

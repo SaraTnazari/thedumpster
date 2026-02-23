@@ -56,7 +56,6 @@ export function useFollows(targetUserId?: string) {
         followingCount: followingCount || 0,
       });
     } catch (err) {
-      console.error("Follow state error:", err);
       setState((prev) => ({ ...prev, loading: false }));
     }
   }, [targetUserId]);
@@ -94,7 +93,6 @@ export function useFollows(targetUserId?: string) {
       // Refresh state
       await fetchFollowState();
     } catch (err) {
-      console.error("Toggle follow error:", err);
       setState((prev) => ({ ...prev, loading: false }));
     }
   }, [targetUserId, state.isFollowing, fetchFollowState]);
@@ -140,7 +138,7 @@ export function useFollowingFeed() {
 
         setReviews(reviewsData || []);
       } catch (err) {
-        console.error("Following feed error:", err);
+        // Error handled silently
       } finally {
         setLoading(false);
       }

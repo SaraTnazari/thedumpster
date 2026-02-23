@@ -32,7 +32,6 @@ export function useSubscription() {
           .maybeSingle();
 
         if (error) {
-          console.error("Error fetching subscription:", error);
           setState({ plan: "free", status: "active", loading: false, isPro: false });
           return;
         }
@@ -43,7 +42,6 @@ export function useSubscription() {
 
         setState({ plan, status, loading: false, isPro });
       } catch (err) {
-        console.error("Subscription error:", err);
         setState({ plan: "free", status: "active", loading: false, isPro: false });
       }
     };

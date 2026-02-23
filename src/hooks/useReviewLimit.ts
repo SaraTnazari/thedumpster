@@ -57,7 +57,7 @@ export function useReviewLimit() {
         .maybeSingle();
 
       if (error) {
-        console.error("Error fetching review limit:", error);
+        // Error handled silently
       }
 
       const count = data?.review_count || 0;
@@ -71,7 +71,6 @@ export function useReviewLimit() {
         dailyLimit: FREE_DAILY_LIMIT,
       });
     } catch (err) {
-      console.error("Review limit error:", err);
       setState((prev) => ({ ...prev, loading: false }));
     }
   }, [isPro]);
@@ -101,7 +100,7 @@ export function useReviewLimit() {
       );
 
     if (error) {
-      console.error("Error incrementing review count:", error);
+      // Error handled silently
     }
 
     // Refresh state

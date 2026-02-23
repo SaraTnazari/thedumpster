@@ -8,6 +8,7 @@ import { FollowButton } from "@/components/FollowButton";
 import { SubscriptionGate } from "@/components/SubscriptionGate";
 import { useFollows } from "@/hooks/useFollows";
 import { supabase } from "@/integrations/supabase/client";
+import { getImageUrl } from "@/lib/image-utils";
 
 interface ProfileData {
   user_id: string;
@@ -70,7 +71,7 @@ const UserProfile = () => {
 
         setReviews(reviewsData || []);
       } catch (err) {
-        console.error("Error fetching user profile:", err);
+        // Silent error handling
       } finally {
         setLoading(false);
       }
@@ -78,12 +79,6 @@ const UserProfile = () => {
 
     fetchProfile();
   }, [userId, navigate]);
-
-  const getImageUrl = (url: string | null) => {
-    if (!url) return null;
-    if (url.startsWith("http")) return url;
-    return `https://image.tmdb.org/t/p/w500${url}`;
-  };
 
   if (loading) {
     return (

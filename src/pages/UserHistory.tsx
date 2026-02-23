@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ChevronLeft, ArrowLeft, Star } from "lucide-react";
+import { ArrowLeft, Star } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
+import { getImageUrl } from "@/lib/image-utils";
 
 interface ReviewWithMovie {
   id: string;
@@ -12,13 +13,12 @@ interface ReviewWithMovie {
   shittiness_score: number;
   review_text: string | null;
   created_at: string;
-  movie: {
+  movies: {
     id: string;
     title: string;
     poster_url: string | null;
     release_year: number | null;
-    status: "purgatory" | "verified";
-  };
+  } | null;
 }
 
 const UserHistory = () => {
@@ -38,20 +38,7 @@ const UserHistory = () => {
         // Fetch all reviews with movie information
         const { data, error } = await supabase
           .from("reviews")
-          .select(`
-            id,
-            movie_id,
-            shittiness_score,
-            review_text,
-            created_at,
-            movies!inner (
-              id,
-              title,
-              poster_url,
-              release_year,
-              status
-            )
-          `)
+          .select("id, movie_id, shittiness_score, review_text, created_at, movies(id, title, poster_url, release_year)")
           .eq("user_id", session.user.id)
           .order("created_at", { ascending: false });
 
@@ -64,12 +51,12 @@ const UserHistory = () => {
           shittiness_score: review.shittiness_score,
           review_text: review.review_text,
           created_at: review.created_at,
-          movie: review.movies || null,
-        })).filter((review) => review.movie !== null);
+          movies: review.movies || null,
+        })).filter((review) => review.movies !== null);
 
         setReviews(transformedReviews);
-      } catch (error: any) {
-        console.error("Error fetching user history:", error);
+      } catch (error) {
+        // Silent error handling
       } finally {
         setLoading(false);
       }
@@ -77,15 +64,6 @@ const UserHistory = () => {
 
     fetchUserHistory();
   }, [navigate]);
-
-  // Fix image URL: if it starts with http, use as-is; otherwise prepend TMDB base URL
-  const getImageUrl = (url: string | null) => {
-    if (!url) return null;
-    if (url.startsWith("http")) {
-      return url;
-    }
-    return `https://image.tmdb.org/t/p/w500${url}`;
-  };
 
   return (
     <AppLayout>
@@ -143,7 +121,7 @@ const UserHistory = () => {
         ) : (
           <div className="space-y-4">
             {reviews.map((review, index) => {
-              const imageUrl = getImageUrl(review.movie.poster_url);
+              const imageUrl = getImageUrl(review.movies?.poster_url || null);
               // shittiness_score is already 1-10, display as X/10
               const displayRating = review.shittiness_score.toFixed(1);
 
@@ -154,7 +132,7 @@ const UserHistory = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
                 >
-                  <Link to={`/movie/${review.movie.id}`}>
+                  <Link to={`/movie/${review.movies?.id}`}>
                     <div className="rounded-xl bg-card border border-border p-4 hover:bg-muted/50 transition-colors">
                       <div className="flex gap-4">
                         {/* Poster */}
@@ -162,7 +140,7 @@ const UserHistory = () => {
                           {imageUrl ? (
                             <img
                               src={imageUrl}
-                              alt={review.movie.title}
+                              alt={review.movies?.title || "Movie"}
                               className="w-full h-full object-cover"
                             />
                           ) : (
@@ -178,11 +156,11 @@ const UserHistory = () => {
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               <h3 className="font-display text-foreground truncate">
-                                {review.movie.title}
+                                {review.movies?.title || "Unknown Movie"}
                               </h3>
-                              {review.movie.release_year && (
+                              {review.movies?.release_year && (
                                 <p className="text-sm text-muted-foreground">
-                                  {review.movie.release_year}
+                                  {review.movies.release_year}
                                 </p>
                               )}
                             </div>

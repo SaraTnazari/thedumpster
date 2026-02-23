@@ -54,8 +54,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
       } else {
         throw new Error(data.error || "Failed to create checkout session");
       }
-    } catch (error: any) {
-      console.error("Purchase error:", error);
+    } catch {
       setIsProcessing(false);
     }
   };

@@ -68,7 +68,7 @@ const HallOfShame = () => {
 
         setReviews(transformedReviews);
       } catch (error: any) {
-        console.error("Error fetching Hall of Shame:", error);
+        // Error handled silently
       } finally {
         setLoading(false);
       }

@@ -1,20 +1,14 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ChevronLeft, ArrowLeft, Star, CheckCircle, Calendar, Film, User, Loader2 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { supabase } from "../lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AddReviewModal } from "@/components/AddReviewModal";
+import { PurgatoryVoteCard } from "@/components/PurgatoryVoteCard";
+import { getImageUrl } from "@/lib/image-utils";
 import confetti from "canvas-confetti";
 
 interface Movie {
@@ -26,15 +20,22 @@ interface Movie {
   created_at: string;
 }
 
-interface ReviewWithProfile {
+interface Review {
   id: string;
+  user_id: string;
   shittiness_score: number;
   review_text: string | null;
   created_at: string;
-  profiles: {
-    username: string | null;
-    avatar_url: string | null;
-  } | null;
+}
+
+interface Profile {
+  user_id: string;
+  username: string | null;
+  avatar_url: string | null;
+}
+
+interface ReviewWithProfile extends Review {
+  profiles: Profile | null;
 }
 
 const MovieDetail = () => {
@@ -46,22 +47,9 @@ const MovieDetail = () => {
   const [loading, setLoading] = useState(true);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [reviewModalOpen, setReviewModalOpen] = useState(false);
-  const [rating, setRating] = useState([5.0]);
-  const [reviewText, setReviewText] = useState("");
-  const [userReview, setUserReview] = useState<{ id: string; shittiness_score: number; review_text: string | null } | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [addReviewModalOpen, setAddReviewModalOpen] = useState(false);
-
-  // Fix image URL: if it starts with http, use as-is; otherwise prepend TMDB base URL
-  const getImageUrl = (url: string | null) => {
-    if (!url) return null;
-    if (url.startsWith("http")) {
-      return url;
-    }
-    return `https://image.tmdb.org/t/p/w500${url}`;
-  };
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userReview, setUserReview] = useState<Review | null>(null);
 
   useEffect(() => {
     const fetchMovie = async () => {
@@ -98,7 +86,6 @@ const MovieDetail = () => {
     if (!id) return;
 
     try {
-      // Fetch reviews for this movie from Supabase
       const { data: reviewsData, error: reviewsError } = await supabase
         .from("reviews")
         .select("*")
@@ -106,7 +93,6 @@ const MovieDetail = () => {
         .order("created_at", { ascending: false });
 
       if (reviewsError) {
-        console.error("Error fetching reviews:", reviewsError);
         throw reviewsError;
       }
 
@@ -116,26 +102,26 @@ const MovieDetail = () => {
         return;
       }
 
-      // Fetch profiles for all user_ids in the reviews
-      const userIds = [...new Set(reviewsData.map(r => r.user_id))];
+      const userIds = [...new Set(reviewsData.map((r: any) => r.user_id))];
       const { data: profilesData, error: profilesError } = await supabase
         .from("profiles")
         .select("user_id, username, avatar_url")
         .in("user_id", userIds);
 
       if (profilesError) {
-        console.error("Error fetching profiles:", profilesError);
+        throw profilesError;
       }
 
-      // Combine reviews with profiles
       const combined: ReviewWithProfile[] = reviewsData.map((review: any) => {
-        const profile = profilesData?.find(p => p.user_id === review.user_id);
+        const profile = profilesData?.find((p: any) => p.user_id === review.user_id);
         return {
           id: review.id,
+          user_id: review.user_id,
           shittiness_score: review.shittiness_score,
           review_text: review.review_text,
           created_at: review.created_at,
           profiles: profile ? {
+            user_id: profile.user_id,
             username: profile.username,
             avatar_url: profile.avatar_url,
           } : null,
@@ -144,7 +130,6 @@ const MovieDetail = () => {
 
       setReviews(combined);
     } catch (err: any) {
-      console.error("Error fetching reviews:", err);
       setReviews([]);
     } finally {
       setReviewsLoading(false);
@@ -155,63 +140,49 @@ const MovieDetail = () => {
     if (id) {
       fetchReviews();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   useEffect(() => {
-    const checkUserReview = async () => {
-      console.log("[MovieDetail] Checking user review for movie:", id);
+    const checkUserSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setIsLoggedIn(!!session);
 
       if (session?.user && id) {
         try {
-          // Check if user has already reviewed this movie
           const { data: existingReview, error: reviewCheckError } = await supabase
             .from("reviews")
-            .select("id, shittiness_score, review_text")
+            .select("id, user_id, shittiness_score, review_text, created_at")
             .eq("movie_id", id)
             .eq("user_id", session.user.id)
             .maybeSingle();
 
           if (reviewCheckError) {
-            console.error("[MovieDetail] Error checking user review:", reviewCheckError);
-            return;
+            throw reviewCheckError;
           }
 
           if (existingReview) {
-            console.log("[MovieDetail] Found existing review:", existingReview);
             setUserReview(existingReview);
-            setRating([existingReview.shittiness_score]);
-            setReviewText(existingReview.review_text || "");
           } else {
-            console.log("[MovieDetail] No existing review found");
             setUserReview(null);
-            setRating([5.0]);
-            setReviewText("");
           }
         } catch (err) {
-          console.error("[MovieDetail] Error in checkUserReview:", err);
+          setUserReview(null);
         }
       }
     };
 
-    checkUserReview();
+    checkUserSession();
   }, [id]);
 
-  // Handle review submission from AddReviewModal
   const handleAddReviewSubmit = async (rating: number, content: string) => {
     if (!id) {
-      console.error("Error: Movie ID is missing");
       return;
     }
 
     try {
-      // Get current user
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+
       if (sessionError || !session?.user) {
-        console.error("Error: User not authenticated", sessionError);
         toast({
           title: "Error",
           description: "You must be logged in to submit a review",
@@ -220,10 +191,8 @@ const MovieDetail = () => {
         return;
       }
 
-      // Convert 1-5 rating to 0-10 scale (1 = 2, 2 = 4, 3 = 6, 4 = 8, 5 = 10)
       const shittinessScore = rating * 2;
 
-      // Insert review into Supabase (only columns that exist in the schema)
       const { error: insertError } = await supabase
         .from("reviews")
         .upsert({
@@ -236,7 +205,6 @@ const MovieDetail = () => {
         });
 
       if (insertError) {
-        console.error("Error inserting review:", insertError);
         toast({
           title: "Error",
           description: insertError.message || "Failed to submit review",
@@ -245,10 +213,8 @@ const MovieDetail = () => {
         return;
       }
 
-      // Refetch reviews to update the list
       await fetchReviews();
 
-      // Trigger confetti on successful review
       confetti({
         particleCount: 100,
         spread: 70,
@@ -259,141 +225,25 @@ const MovieDetail = () => {
         title: "Review submitted!",
         description: "Your review has been saved.",
       });
+
+      setAddReviewModalOpen(false);
+
+      const { data: updatedReview } = await supabase
+        .from("reviews")
+        .select("id, user_id, shittiness_score, review_text, created_at")
+        .eq("movie_id", id)
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      if (updatedReview) {
+        setUserReview(updatedReview);
+      }
     } catch (err: any) {
-      console.error("Error in handleAddReviewSubmit:", err);
       toast({
         title: "Error",
         description: err.message || "Failed to submit review",
         variant: "destructive",
       });
-    }
-  };
-
-  // Handle review submission
-  const handleReviewSubmit = async () => {
-    console.log("[MovieDetail] handleReviewSubmit called");
-    
-    // Step 1: Validate inputs
-    if (!id) {
-      console.error("[MovieDetail] No movie ID available");
-      toast({
-        title: "Error",
-        description: "Movie ID is missing",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Step 2: Check authentication
-    console.log("[MovieDetail] Checking authentication");
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
-    if (sessionError) {
-      console.error("[MovieDetail] Session error:", sessionError);
-      toast({
-        title: "Error",
-        description: "Failed to verify authentication",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!session?.user) {
-      console.log("[MovieDetail] User not logged in");
-      toast({
-        title: "Error",
-        description: "You must be logged in to submit a review",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    console.log("[MovieDetail] User authenticated:", session.user.id);
-
-    // Step 3: Calculate score
-    const currentRating = rating[0] || 5.0;
-    const shittinessScore = Math.max(1, Math.min(10, Math.round(currentRating)));
-    const trimmedReviewText = reviewText.trim() || null;
-    
-    console.log("[MovieDetail] Submitting review:", {
-      movie_id: id,
-      user_id: session.user.id,
-      shittiness_score: shittinessScore,
-      has_text: !!trimmedReviewText,
-    });
-
-    // Step 4: Set submitting state
-    setSubmitting(true);
-
-    try {
-      // Step 5: Upsert review (only columns that exist in the schema)
-      const { error: reviewError } = await supabase
-        .from("reviews")
-        .upsert({
-          user_id: session.user.id,
-          movie_id: id,
-          shittiness_score: shittinessScore,
-          review_text: trimmedReviewText,
-        }, {
-          onConflict: "user_id,movie_id",
-        });
-
-      if (reviewError) {
-        console.error("[MovieDetail] Review upsert error:", reviewError);
-        throw reviewError;
-      }
-
-      console.log("[MovieDetail] Review saved successfully");
-
-      // Trigger confetti on successful review
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
-
-      // Step 6: Show success message
-      const isUpdate = !!userReview;
-      toast({
-        title: isUpdate ? "Review updated!" : "Review submitted!",
-        description: `Your review has been ${isUpdate ? "updated" : "saved"}.`,
-      });
-
-      // Step 7: Close modal
-      setReviewModalOpen(false);
-
-      // Step 8: Refresh reviews list
-      console.log("[MovieDetail] Refreshing reviews list");
-      setReviewsLoading(true);
-      await fetchReviews();
-
-      // Step 9: Update user review state
-      console.log("[MovieDetail] Updating user review state");
-      const { data: updatedReview, error: fetchError } = await supabase
-        .from("reviews")
-        .select("id, shittiness_score, review_text")
-        .eq("movie_id", id)
-        .eq("user_id", session.user.id)
-        .maybeSingle();
-
-      if (fetchError) {
-        console.error("[MovieDetail] Error fetching updated review:", fetchError);
-      } else if (updatedReview) {
-        console.log("[MovieDetail] Updated user review state:", updatedReview);
-        setUserReview(updatedReview);
-      }
-
-      console.log("[MovieDetail] Review submission complete");
-    } catch (error: any) {
-      console.error("[MovieDetail] Error in handleReviewSubmit:", error);
-      toast({
-        title: "Error",
-        description: error?.message || "Failed to submit review",
-        variant: "destructive",
-      });
-    } finally {
-      setSubmitting(false);
-      console.log("[MovieDetail] handleReviewSubmit finished");
     }
   };
 
@@ -438,8 +288,8 @@ const MovieDetail = () => {
   return (
     <AppLayout>
       {/* Floating Back Button */}
-      <button 
-        onClick={() => navigate(-1)} 
+      <button
+        onClick={() => navigate(-1)}
         className="fixed top-12 left-4 z-50 p-3 bg-black/60 backdrop-blur-md rounded-full text-white shadow-lg border border-white/10 hover:bg-black/80 transition-colors"
       >
         <ArrowLeft size={24} />
@@ -503,6 +353,11 @@ const MovieDetail = () => {
             </div>
           </div>
 
+          {/* Purgatory Voting */}
+          {movie.status === "purgatory" && (
+            <PurgatoryVoteCard movieId={movie.id} />
+          )}
+
           {/* Rate & Review Button */}
           {isLoggedIn && (
             <motion.div
@@ -511,7 +366,7 @@ const MovieDetail = () => {
               transition={{ delay: 0.2 }}
             >
               <Button
-                onClick={() => setReviewModalOpen(true)}
+                onClick={() => setAddReviewModalOpen(true)}
                 className="w-full h-12 gradient-fire text-primary-foreground font-display text-lg tracking-wider rounded-xl hover:box-glow-pink transition-all duration-300"
               >
                 <Star className="w-5 h-5 mr-2" />
@@ -524,7 +379,7 @@ const MovieDetail = () => {
           <div className="rounded-2xl gradient-fire p-[1px]">
             <div className="bg-card rounded-2xl p-6">
               <h2 className="text-xl font-display text-foreground mb-4">Community Trash Talk</h2>
-              
+
               {reviewsLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
@@ -599,102 +454,6 @@ const MovieDetail = () => {
               )}
             </div>
           </div>
-        </motion.div>
-
-        {/* Review Modal */}
-        <Dialog 
-          open={reviewModalOpen} 
-          onOpenChange={(open) => {
-            setReviewModalOpen(open);
-            // Reset form when closing without submitting
-            if (!open && userReview) {
-              setRating([userReview.shittiness_score]);
-              setReviewText(userReview.review_text || "");
-            } else if (!open) {
-              setRating([5.0]);
-              setReviewText("");
-            }
-          }}
-        >
-          <DialogContent className="sm:max-w-[500px] bg-card border-border">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-display text-primary glow-pink">
-                {userReview ? "Edit Your Review" : "Rate This Trash"}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-6 py-4">
-              {/* Rating Slider */}
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                  <Star className="w-4 h-4" /> Shittiness Score
-                </label>
-                <div className="space-y-2">
-                  <Slider
-                    value={rating}
-                    onValueChange={setRating}
-                    min={0}
-                    max={10}
-                    step={0.1}
-                    className="w-full"
-                  />
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">0.0</span>
-                    <span className="text-primary font-display text-lg">
-                      {rating[0].toFixed(1)}
-                    </span>
-                    <span className="text-muted-foreground">10.0</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Review Text */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  Why is this trash?
-                </label>
-                <Textarea
-                  placeholder="Tell us why this movie belongs in the dumpster..."
-                  value={reviewText}
-                  onChange={(e) => setReviewText(e.target.value)}
-                  className="min-h-[120px] bg-muted border-border focus:border-primary rounded-xl resize-none"
-                />
-              </div>
-
-              {/* Submit Button */}
-              <Button
-                onClick={handleReviewSubmit}
-                disabled={submitting}
-                className="w-full h-12 gradient-fire text-primary-foreground font-display text-lg tracking-wider rounded-xl hover:box-glow-pink transition-all duration-300"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    {userReview ? "Updating..." : "Submitting..."}
-                  </>
-                ) : (
-                  "Submit Review"
-                )}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Large Write Review Button at Bottom */}
-      <div className="fixed bottom-20 left-0 right-0 z-40 px-4 pb-safe">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-lg mx-auto"
-        >
-          <Button
-            onClick={() => setAddReviewModalOpen(true)}
-            className="w-full h-14 gradient-fire text-primary-foreground font-display text-lg tracking-wider rounded-xl hover:box-glow-pink transition-all duration-300"
-          >
-            <Star className="w-5 h-5 mr-2" />
-            Write a Review
-          </Button>
         </motion.div>
       </div>
 

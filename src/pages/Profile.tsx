@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { User, LogIn, FileText, Vote, Star, Award, Settings, Users, CreditCard, Crown, LogOut } from "lucide-react";
+import { User, LogIn, FileText, Vote, Star, Award, Users, CreditCard, LogOut } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isPro } = useSubscription();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<{
@@ -26,12 +27,10 @@ const Profile = () => {
     moviesRated: 0,
   });
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const [isPro, setIsPro] = useState(false);
 
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
-      localStorage.removeItem('isProUser');
       localStorage.removeItem('dumpster_username');
       toast({
         title: "Signed out",
@@ -46,28 +45,6 @@ const Profile = () => {
       });
     }
   };
-
-  useEffect(() => {
-    // Check if user is Pro
-    const checkProStatus = () => {
-      const proStatus = localStorage.getItem('isProUser') === 'true';
-      setIsPro(proStatus);
-    };
-    
-    checkProStatus();
-    
-    // Listen for storage changes (when purchase completes)
-    window.addEventListener('storage', checkProStatus);
-    
-    // Also listen for custom event in case purchase happens in same window
-    const handleStorageChange = () => checkProStatus();
-    window.addEventListener('localStorageChange', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener('storage', checkProStatus);
-      window.removeEventListener('localStorageChange', handleStorageChange);
-    };
-  }, []);
 
   useEffect(() => {
     const fetchStats = async (userId: string) => {
@@ -104,26 +81,26 @@ const Profile = () => {
           purgatoryVotes: votesCount || 0,
         });
       } catch (error) {
-        console.error("Error fetching stats:", error);
+        // Silent error handling
       }
     };
 
     const checkAuthAndFetchStats = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setIsLoggedIn(!!session);
-      
+
       if (session?.user) {
         await fetchStats(session.user.id);
-        
+
         // Fetch profile data
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("username, avatar_url, bio")
           .eq("user_id", session.user.id)
           .single();
-        
+
         if (profileError && profileError.code !== 'PGRST116') {
-          console.error("Error fetching profile:", profileError);
+          // Silent error handling
         } else {
           setProfile(profileData || { username: null, avatar_url: null, bio: null });
         }
@@ -131,7 +108,7 @@ const Profile = () => {
         setStats({ reviewsWritten: 0, purgatoryVotes: 0, moviesRated: 0 });
         setProfile(null);
       }
-      
+
       setLoading(false);
     };
 
@@ -141,16 +118,16 @@ const Profile = () => {
       setIsLoggedIn(!!session);
       if (session?.user) {
         await fetchStats(session.user.id);
-        
+
         // Fetch profile data
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("username, avatar_url, bio")
           .eq("user_id", session.user.id)
           .single();
-        
+
         if (profileError && profileError.code !== 'PGRST116') {
-          console.error("Error fetching profile:", profileError);
+          // Silent error handling
         } else {
           setProfile(profileData || { username: null, avatar_url: null, bio: null });
         }
@@ -179,7 +156,7 @@ const Profile = () => {
     return (
       <AppLayout>
         <div className="py-6 space-y-6">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center space-y-4"
@@ -208,7 +185,7 @@ const Profile = () => {
     <AppLayout>
       <div className="py-6 space-y-6 pt-safe" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 24px)' }}>
         {/* Avatar & Identity */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center space-y-3"
@@ -229,10 +206,10 @@ const Profile = () => {
               {profile.bio}
             </p>
           )}
-          <div 
+          <div
             onClick={() => setShowUpgrade(true)}
             className={`inline-flex items-center gap-2 px-4 py-1 rounded-full cursor-pointer transition-colors ${
-              isPro 
+              isPro
                 ? "bg-gradient-to-r from-yellow-400 to-yellow-600 border border-yellow-500/50 shadow-[0_0_20px_rgba(250,204,21,0.5)] hover:shadow-[0_0_30px_rgba(250,204,21,0.7)]"
                 : "bg-primary/20 border border-primary/30 hover:bg-primary/30"
             }`}
@@ -243,29 +220,29 @@ const Profile = () => {
         </motion.div>
 
         {/* Stats Grid */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
           className="grid grid-cols-3 gap-3"
         >
           {[
-            { 
-              icon: FileText, 
-              label: "Reviews Written", 
+            {
+              icon: FileText,
+              label: "Reviews Written",
               value: stats.reviewsWritten.toString(),
               clickable: true,
               onClick: () => navigate("/profile/history"),
             },
-            { 
-              icon: Vote, 
-              label: "Purgatory Votes", 
+            {
+              icon: Vote,
+              label: "Purgatory Votes",
               value: stats.purgatoryVotes.toString(),
               clickable: false,
             },
-            { 
-              icon: Star, 
-              label: "Movies Rated", 
+            {
+              icon: Star,
+              label: "Movies Rated",
               value: stats.moviesRated.toString(),
               clickable: true,
               onClick: () => navigate("/profile/history"),
@@ -296,7 +273,7 @@ const Profile = () => {
         </motion.div>
 
         {/* Menu */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
@@ -307,7 +284,7 @@ const Profile = () => {
             { icon: Award, label: "Hall of Shame", to: "/hall-of-shame" },
             { icon: Star, label: "My Badges", to: "/badges" },
             { icon: CreditCard, label: "Billing & Plan", to: "/billing" },
-            { icon: Settings, label: "Edit Profile", to: "/profile/edit" },
+            { icon: User, label: "Edit Profile", to: "/profile/edit" },
           ].map((item) => (
             <Link
               key={item.label}
@@ -330,8 +307,8 @@ const Profile = () => {
         </motion.div>
       </div>
       {showUpgrade && (
-        <UpgradeModal 
-          open={showUpgrade} 
+        <UpgradeModal
+          open={showUpgrade}
           onOpenChange={setShowUpgrade}
         />
       )}

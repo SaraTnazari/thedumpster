@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Flame, ChevronRight, User, Star, Trash2, Settings } from "lucide-react";
+import { Flame, ChevronRight, User, Star, Trash2 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { CountdownCard } from "@/components/CountdownCard";
 import { MovieCard } from "@/components/MovieCard";
 import { MovieListItem } from "@/components/MovieListItem";
 import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
+import { getImageUrl } from "@/lib/image-utils";
 
 interface Movie {
   id: string;
@@ -46,7 +47,7 @@ const Index = () => {
         if (error) throw error;
         setMovies(data || []);
       } catch (error: any) {
-        console.error("Error fetching movies:", error);
+        // Error handling
       } finally {
         setLoading(false);
       }
@@ -66,27 +67,17 @@ const Index = () => {
           .limit(5);
 
         if (error) {
-          console.error("Error fetching recent reviews:", error);
           return;
         }
 
         setRecentReviews(data || []);
       } catch (error: any) {
-        console.error("Error fetching recent reviews:", error);
+        // Error handling
       }
     };
 
     fetchRecentReviews();
   }, []);
-
-  // Helper function to get image URL
-  const getImageUrl = (url: string | null) => {
-    if (!url) return null;
-    if (url.startsWith("http")) {
-      return url;
-    }
-    return `https://image.tmdb.org/t/p/w500${url}`;
-  };
 
   // Separate verified and purgatory movies
   const verifiedMovies = movies.filter((m) => m.status === "verified");
@@ -96,9 +87,6 @@ const Index = () => {
     <AppLayout>
       {/* Header Buttons */}
       <div className="fixed top-0 right-0 z-50 p-4 pt-safe flex items-center gap-2">
-        <Link to="/settings" className="p-2 rounded-full hover:bg-white/10 transition-colors">
-          <Settings className="w-6 h-6 text-white" />
-        </Link>
         <Link to="/profile" className="p-2 rounded-full hover:bg-white/10 transition-colors">
           <User className="w-6 h-6 text-primary" />
         </Link>
@@ -139,7 +127,7 @@ const Index = () => {
                     See all <ChevronRight className="w-4 h-4" />
                   </Link>
                 </div>
-                
+
                 <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
                   {verifiedMovies.slice(0, 10).map((movie, index) => (
                     <motion.div
@@ -168,7 +156,7 @@ const Index = () => {
                   <Trash2 className="w-5 h-5 text-primary" />
                   <h2 className="text-xl font-display text-foreground">Fresh Trash</h2>
                 </div>
-                
+
                 <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
                   {recentReviews.map((review, index) => {
                     const posterUrl = getImageUrl(review.movies?.poster_url || null);
@@ -217,14 +205,14 @@ const Index = () => {
                             </div>
                           </div>
                         </div>
-                        
+
                         {/* Review Text */}
                         {review.review_text && (
                           <p className="text-xs text-muted-foreground line-clamp-3 mb-2">
                             {review.review_text}
                           </p>
                         )}
-                        
+
                         {/* Score Badge */}
                         <p className="text-xs text-primary font-medium">
                           Score: {review.shittiness_score}/10
@@ -243,7 +231,7 @@ const Index = () => {
                   <span className="text-2xl">🗑️</span>
                   <h2 className="text-xl font-display text-foreground">Fresh Garbage</h2>
                 </div>
-                
+
                 <div className="space-y-2">
                   {allMovies.slice(0, 10).map((movie, index) => (
                     <MovieListItem

@@ -78,7 +78,6 @@ const BillingSettings = () => {
             });
           }
         } catch (err) {
-          console.error("Payment verification error:", err);
           toast({
             title: "Verification issue",
             description: "Payment received. Your account will be updated shortly.",

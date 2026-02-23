@@ -50,7 +50,6 @@ const Search = () => {
       if (error) throw error;
       setResults(data || []);
     } catch (error: any) {
-      console.error("Error searching movies:", error);
       setResults([]);
     } finally {
       setLoading(false);
