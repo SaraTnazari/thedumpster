@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { supabase } from "@/integrations/supabase/client";
+import OnboardingFlow from "@/components/OnboardingFlow";
 import Index from "./pages/Index";
 import Search from "./pages/Search";
 import Post from "./pages/Post";
@@ -61,6 +62,8 @@ const AuthGuard = ({ children }: { children: React.ReactNode }) => {
 };
 
 const App = () => {
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
   useEffect(() => {
     const configureStatusBar = async () => {
       try {
@@ -85,12 +88,23 @@ const App = () => {
     return () => document.removeEventListener('blur', handleBlur, true);
   }, []);
 
+  // Check if onboarding should be shown
+  useEffect(() => {
+    const done = localStorage.getItem("dumpster_onboarding_done");
+    if (!done) {
+      setShowOnboarding(true);
+    }
+  }, []);
+
   return (
     <div className="h-screen overflow-hidden">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          {showOnboarding && (
+            <OnboardingFlow onComplete={() => setShowOnboarding(false)} />
+          )}
           <BrowserRouter>
             <AuthGuard>
               <Routes>

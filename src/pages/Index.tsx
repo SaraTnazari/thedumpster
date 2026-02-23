@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Flame, ChevronRight, User, Star, Trash2 } from "lucide-react";
+import { Flame, ChevronRight, User, Star, Trash2, Skull, LogIn } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { CountdownCard } from "@/components/CountdownCard";
 import { MovieCard } from "@/components/MovieCard";
@@ -35,8 +35,30 @@ const Index = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [recentReviews, setRecentReviews] = useState<RecentReview[]>([]);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+
+  // Check auth state
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsLoggedIn(!!session);
+    };
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
+    // Only fetch data if logged in
+    if (isLoggedIn !== true) {
+      setLoading(false);
+      return;
+    }
+
     const fetchMovies = async () => {
       try {
         const { data, error } = await supabase
@@ -54,10 +76,12 @@ const Index = () => {
     };
 
     fetchMovies();
-  }, []);
+  }, [isLoggedIn]);
 
-  // Fetch recent reviews
+  // Fetch recent reviews only when logged in
   useEffect(() => {
+    if (isLoggedIn !== true) return;
+
     const fetchRecentReviews = async () => {
       try {
         const { data, error } = await supabase
@@ -77,11 +101,80 @@ const Index = () => {
     };
 
     fetchRecentReviews();
-  }, []);
+  }, [isLoggedIn]);
 
   // Separate verified and purgatory movies
   const verifiedMovies = movies.filter((m) => m.status === "verified");
   const allMovies = movies;
+
+  // Show landing page for non-logged-in users
+  if (isLoggedIn === false) {
+    return (
+      <AppLayout>
+        <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 space-y-8">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 200 }}
+            className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-primary/10 animate-pulse-glow"
+          >
+            <Skull className="w-12 h-12 text-primary" />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-center space-y-3"
+          >
+            <h1 className="text-4xl font-gothic text-primary glow-pink">
+              Dumpster
+            </h1>
+            <p className="text-lg text-muted-foreground max-w-sm">
+              The social app for rating the worst movies ever made.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="space-y-3 w-full max-w-xs"
+          >
+            <Link
+              to="/auth"
+              className="flex items-center justify-center gap-2 w-full px-8 py-4 gradient-fire text-primary-foreground font-display text-lg tracking-wider rounded-xl hover:box-glow-pink transition-all duration-300"
+            >
+              <LogIn className="w-5 h-5" />
+              Sign In / Sign Up
+            </Link>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="text-center space-y-4 pt-8"
+          >
+            <div className="flex items-center gap-6 text-muted-foreground">
+              <div className="text-center">
+                <Trash2 className="w-6 h-6 mx-auto mb-1 text-primary" />
+                <p className="text-xs">Rate Trash</p>
+              </div>
+              <div className="text-center">
+                <Star className="w-6 h-6 mx-auto mb-1 text-primary" />
+                <p className="text-xs">Write Reviews</p>
+              </div>
+              <div className="text-center">
+                <Flame className="w-6 h-6 mx-auto mb-1 text-primary" />
+                <p className="text-xs">Earn Badges</p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

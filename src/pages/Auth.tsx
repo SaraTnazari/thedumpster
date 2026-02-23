@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Skull, Mail, Lock, User, Loader2, ChevronLeft } from "lucide-react";
+import { Skull, Mail, Lock, User, Loader2, ChevronLeft, CheckCircle } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ const Auth = () => {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -114,9 +115,9 @@ const Auth = () => {
 
         toast({
           title: "Welcome to Dumpster!",
-          description: "Your journey into cinematic trash begins now.",
+          description: "Check your email to confirm your account.",
         });
-        navigate("/");
+        setShowEmailConfirmation(true);
       }
     } catch (error: any) {
       toast({
@@ -129,6 +130,99 @@ const Auth = () => {
     }
   };
 
+  const handleBackToSignIn = () => {
+    setShowEmailConfirmation(false);
+    setIsLogin(true);
+    setEmail("");
+    setPassword("");
+    setUsername("");
+    setUsernameError(null);
+  };
+
+  // Email Confirmation Screen
+  if (showEmailConfirmation) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 pt-safe pb-safe relative">
+        {/* Back Button */}
+        <motion.button
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          onClick={() => navigate(-1)}
+          className="absolute top-4 left-4 z-10 p-2 rounded-full bg-card/80 backdrop-blur-sm hover:bg-card transition-colors"
+          style={{ top: `calc(env(safe-area-inset-top, 0px) + 1rem)` }}
+          aria-label="Go back"
+        >
+          <ChevronLeft className="w-6 h-6 text-foreground" />
+        </motion.button>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-sm space-y-8 text-center"
+        >
+          {/* Logo */}
+          <div className="space-y-3">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 200 }}
+              className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 animate-pulse-glow"
+            >
+              <Skull className="w-10 h-10 text-primary" />
+            </motion.div>
+            <h1 className="text-4xl font-gothic text-primary glow-pink">
+              Dumpster
+            </h1>
+          </div>
+
+          {/* Confirmation Content */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="rounded-2xl gradient-fire p-[1px]"
+          >
+            <div className="bg-card rounded-2xl p-8 space-y-6">
+              {/* Mail Icon */}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+                className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mx-auto"
+              >
+                <Mail className="w-8 h-8 text-primary" />
+              </motion.div>
+
+              {/* Confirmation Message */}
+              <div className="space-y-3">
+                <h2 className="text-2xl font-bold text-foreground">
+                  Check your email
+                </h2>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  We sent you a confirmation link. Click the link in your email to activate your account and start exploring the dumpster.
+                </p>
+              </div>
+
+              {/* Back Button */}
+              <Button
+                onClick={handleBackToSignIn}
+                className="w-full gradient-fire text-primary-foreground font-display text-lg tracking-wider rounded-xl hover:box-glow-pink transition-all duration-300 h-12"
+              >
+                Back to Sign In
+              </Button>
+            </div>
+          </motion.div>
+
+          {/* Helper Text */}
+          <p className="text-xs text-muted-foreground">
+            Didn't receive an email? Check your spam folder.
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Standard Auth Screen
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 pt-safe pb-safe relative">
       {/* Back Button */}
@@ -142,15 +236,15 @@ const Auth = () => {
       >
         <ChevronLeft className="w-6 h-6 text-foreground" />
       </motion.button>
-      
-      <motion.div 
+
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-sm space-y-8"
       >
         {/* Logo */}
         <div className="text-center space-y-3">
-          <motion.div 
+          <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", stiffness: 200 }}
@@ -167,11 +261,11 @@ const Auth = () => {
         </div>
 
         {/* Form */}
-        <motion.form 
+        <motion.form
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          onSubmit={handleSubmit} 
+          onSubmit={handleSubmit}
           className="rounded-2xl gradient-fire p-[1px]"
         >
           <div className="bg-card rounded-2xl p-6 space-y-4">

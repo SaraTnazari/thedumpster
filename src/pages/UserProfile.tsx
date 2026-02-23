@@ -139,7 +139,7 @@ const UserProfile = () => {
           </Avatar>
 
           <h2 className="text-2xl font-display text-foreground">
-            {profile.username || "Anonymous"}
+            {profile.username || "TrashPanda"}
           </h2>
 
           {profile.bio && (

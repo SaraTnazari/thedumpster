@@ -44,7 +44,7 @@ export function UserCard({
         {/* Info */}
         <div className="flex-1 min-w-0">
           <h3 className="font-display text-foreground truncate">
-            {username || "Anonymous"}
+            {username || "TrashPanda"}
           </h3>
           <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
             <span>{followersCount} followers</span>

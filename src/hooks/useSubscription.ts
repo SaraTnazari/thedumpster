@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Purchases } from "@revenuecat/purchases-js";
+
+const RC_API_KEY = import.meta.env.VITE_REVENUECAT_API_KEY || "";
 
 interface SubscriptionState {
   plan: "free" | "pro";
@@ -25,6 +28,23 @@ export function useSubscription() {
           return;
         }
 
+        // Try RevenueCat first if configured
+        if (RC_API_KEY) {
+          try {
+            const purchases = Purchases.configure(RC_API_KEY, session.user.id);
+            const customerInfo = await purchases.getCustomerInfo();
+            const isPro = customerInfo.entitlements.active["pro"] !== undefined;
+
+            if (isPro) {
+              setState({ plan: "pro", status: "active", loading: false, isPro: true });
+              return;
+            }
+          } catch (rcError) {
+            // RevenueCat failed, fall through to Supabase check
+          }
+        }
+
+        // Fallback: check Supabase user_subscriptions table
         const { data, error } = await supabase
           .from("user_subscriptions")
           .select("plan, status")

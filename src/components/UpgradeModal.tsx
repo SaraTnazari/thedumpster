@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Crown, X, Check, Loader2 } from "lucide-react";
 import confetti from "canvas-confetti";
@@ -8,6 +8,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+const RC_API_KEY = import.meta.env.VITE_REVENUECAT_API_KEY || "";
 
 interface UpgradeModalProps {
   open: boolean;
@@ -16,6 +19,8 @@ interface UpgradeModalProps {
 
 export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
+  const { toast } = useToast();
+  const purchaseContainerRef = useRef<HTMLDivElement>(null);
 
   const benefits = [
     "Unlimited Reviews (no daily limit)",
@@ -30,13 +35,53 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
     }
   }, [open]);
 
-  const handlePurchase = async () => {
+  const handleRevenueCatPurchase = async () => {
+    setIsProcessing(true);
+    try {
+      const { Purchases } = await import("@revenuecat/purchases-js");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("Not logged in");
+
+      const purchases = Purchases.configure(RC_API_KEY, session.user.id);
+      const offerings = await purchases.getOfferings();
+      const currentOffering = offerings?.current;
+
+      if (!currentOffering || currentOffering.availablePackages.length === 0) {
+        throw new Error("No subscription packages available");
+      }
+
+      const pkg = currentOffering.availablePackages[0];
+
+      await purchases.purchase({
+        rcPackage: pkg,
+        customerEmail: session.user.email || undefined,
+      });
+
+      confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 } });
+      toast({
+        title: "Welcome to Pro!",
+        description: "Your subscription is now active.",
+      });
+      onOpenChange(false);
+    } catch (err: any) {
+      if (err.message !== "Not logged in") {
+        toast({
+          title: "Purchase failed",
+          description: err.message || "Something went wrong",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleStripePurchase = async () => {
     setIsProcessing(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error("Not logged in");
 
-      // Call our API to create a Stripe Checkout session
       const response = await fetch("/api/create-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -49,13 +94,20 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
       const data = await response.json();
 
       if (data.url) {
-        // Redirect to Stripe Checkout
         window.location.href = data.url;
       } else {
         throw new Error(data.error || "Failed to create checkout session");
       }
     } catch {
       setIsProcessing(false);
+    }
+  };
+
+  const handlePurchase = () => {
+    if (RC_API_KEY) {
+      handleRevenueCatPurchase();
+    } else {
+      handleStripePurchase();
     }
   };
 
@@ -108,6 +160,9 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
             ))}
           </div>
 
+          {/* RevenueCat mount point */}
+          <div ref={purchaseContainerRef} id="rc-purchase-container" />
+
           <Button
             disabled={isProcessing}
             className="w-full h-14 gradient-fire text-primary-foreground font-display text-lg tracking-wider rounded-xl hover:box-glow-pink transition-all duration-300"
@@ -116,7 +171,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
             {isProcessing ? (
               <div className="flex items-center gap-2">
                 <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Redirecting to payment...</span>
+                <span>Processing...</span>
               </div>
             ) : (
               "Upgrade to Pro — $2.99/mo"
@@ -124,7 +179,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
           </Button>
 
           <p className="text-center text-xs text-muted-foreground">
-            Secure payment via Stripe. Cancel anytime.
+            Secure payment. Cancel anytime.
           </p>
         </motion.div>
       </DialogContent>

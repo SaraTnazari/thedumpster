@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AddReviewModal } from "@/components/AddReviewModal";
 import { PurgatoryVoteCard } from "@/components/PurgatoryVoteCard";
+import { MovieComments } from "@/components/MovieComments";
 import { getImageUrl } from "@/lib/image-utils";
 import confetti from "canvas-confetti";
 
@@ -443,7 +444,7 @@ const MovieDetail = () => {
                   {reviews.map((review) => {
                     const displayRating = review.shittiness_score.toFixed(1);
                     const avatarUrl = review.profiles?.avatar_url;
-                    const username = review.profiles?.username || "Anonymous";
+                    const username = review.profiles?.username || "TrashPanda";
 
                     return (
                       <motion.div
@@ -504,6 +505,9 @@ const MovieDetail = () => {
               )}
             </div>
           </div>
+          {/* Comments / Discussion Section */}
+          <MovieComments movieId={movie.id} />
+
         </motion.div>
       </div>
 
