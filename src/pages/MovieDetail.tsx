@@ -176,74 +176,94 @@ const MovieDetail = () => {
 
   const handleAddReviewSubmit = async (rating: number, content: string) => {
     if (!id) {
-      return;
+      toast({ title: "Error", description: "Movie ID missing", variant: "destructive" });
+      throw new Error("Movie ID missing");
     }
 
-    try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      if (sessionError || !session?.user) {
-        toast({
-          title: "Error",
-          description: "You must be logged in to submit a review",
-          variant: "destructive",
-        });
-        return;
-      }
+    if (sessionError || !session?.user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to submit a review",
+        variant: "destructive",
+      });
+      throw new Error("Not logged in");
+    }
 
-      const shittinessScore = rating * 2;
+    const shittinessScore = Math.round(rating * 2);
 
-      const { error: insertError } = await supabase
+    // Check if user already has a review for this movie
+    const { data: existingReview } = await supabase
+      .from("reviews")
+      .select("id")
+      .eq("movie_id", id)
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+
+    let submitError: any = null;
+
+    if (existingReview) {
+      // Update existing review
+      const { error } = await supabase
         .from("reviews")
-        .upsert({
+        .update({
+          shittiness_score: shittinessScore,
+          review_text: content || null,
+        })
+        .eq("id", existingReview.id);
+      submitError = error;
+    } else {
+      // Insert new review
+      const { error } = await supabase
+        .from("reviews")
+        .insert({
           movie_id: id,
           user_id: session.user.id,
           shittiness_score: shittinessScore,
           review_text: content || null,
-        }, {
-          onConflict: "user_id,movie_id",
         });
+      submitError = error;
+    }
 
-      if (insertError) {
-        toast({
-          title: "Error",
-          description: insertError.message || "Failed to submit review",
-          variant: "destructive",
-        });
-        return;
-      }
+    if (submitError) {
+      const msg = submitError.message || submitError.details || submitError.hint || JSON.stringify(submitError);
+      toast({
+        title: "Review Error",
+        description: msg,
+        variant: "destructive",
+      });
+      throw new Error(msg);
+    }
 
-      await fetchReviews();
+    await fetchReviews();
 
+    try {
       confetti({
         particleCount: 100,
         spread: 70,
         origin: { y: 0.6 }
       });
+    } catch (_) {
+      // confetti is optional
+    }
 
-      toast({
-        title: "Review submitted!",
-        description: "Your review has been saved.",
-      });
+    toast({
+      title: "Review submitted!",
+      description: "Your review has been saved.",
+    });
 
-      setAddReviewModalOpen(false);
+    setAddReviewModalOpen(false);
 
-      const { data: updatedReview } = await supabase
-        .from("reviews")
-        .select("id, user_id, shittiness_score, review_text, created_at")
-        .eq("movie_id", id)
-        .eq("user_id", session.user.id)
-        .maybeSingle();
+    const { data: updatedReview } = await supabase
+      .from("reviews")
+      .select("id, user_id, shittiness_score, review_text, created_at")
+      .eq("movie_id", id)
+      .eq("user_id", session.user.id)
+      .maybeSingle();
 
-      if (updatedReview) {
-        setUserReview(updatedReview);
-      }
-    } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.message || "Failed to submit review",
-        variant: "destructive",
-      });
+    if (updatedReview) {
+      setUserReview(updatedReview);
     }
   };
 

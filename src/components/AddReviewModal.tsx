@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Trash2, X } from "lucide-react";
+import { Trash2, X, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,22 +11,30 @@ import { Textarea } from "@/components/ui/textarea";
 interface AddReviewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (rating: number, text: string) => void;
+  onSubmit: (rating: number, text: string) => Promise<void>;
 }
 
 export function AddReviewModal({ isOpen, onClose, onSubmit }: AddReviewModalProps) {
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = () => {
-    if (rating > 0) {
-      onSubmit(rating, reviewText);
-      // Reset form
-      setRating(0);
-      setReviewText("");
-      setHoveredRating(0);
-      onClose();
+  const handleSubmit = async () => {
+    if (rating > 0 && !submitting) {
+      setSubmitting(true);
+      try {
+        await onSubmit(rating, reviewText);
+        // Only reset and close on success
+        setRating(0);
+        setReviewText("");
+        setHoveredRating(0);
+        onClose();
+      } catch (err) {
+        // Error is handled by the parent via toast
+      } finally {
+        setSubmitting(false);
+      }
     }
   };
 
@@ -124,10 +132,17 @@ export function AddReviewModal({ isOpen, onClose, onSubmit }: AddReviewModalProp
           >
             <Button
               onClick={handleSubmit}
-              disabled={rating === 0}
+              disabled={rating === 0 || submitting}
               className="w-full h-14 bg-primary text-primary-foreground font-display text-lg tracking-wider rounded-xl hover:bg-primary/90 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Publish Rant
+              {submitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                "Publish Rant"
+              )}
             </Button>
           </motion.div>
         </motion.div>

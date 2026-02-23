@@ -194,19 +194,35 @@ const Post = () => {
 
       // Step 2: Insert or update review in the reviews table
       const shittinessScore = Math.max(1, Math.min(10, Math.round(rating[0])));
-      
-      const { error: reviewError } = await supabase
-        .from("reviews")
-        .upsert({
-          user_id: session.user.id,
-          movie_id: movieId,
-          shittiness_score: shittinessScore,
-          review_text: reviewText.trim() || null,
-        }, {
-          onConflict: "user_id,movie_id",
-        });
 
-      if (reviewError) throw reviewError;
+      // Check if user already reviewed this movie
+      const { data: existingReview } = await supabase
+        .from("reviews")
+        .select("id")
+        .eq("movie_id", movieId)
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      if (existingReview) {
+        const { error: updateError } = await supabase
+          .from("reviews")
+          .update({
+            shittiness_score: shittinessScore,
+            review_text: reviewText.trim() || null,
+          })
+          .eq("id", existingReview.id);
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from("reviews")
+          .insert({
+            user_id: session.user.id,
+            movie_id: movieId,
+            shittiness_score: shittinessScore,
+            review_text: reviewText.trim() || null,
+          });
+        if (insertError) throw insertError;
+      }
 
       // Increment daily review count
       await incrementCount();
