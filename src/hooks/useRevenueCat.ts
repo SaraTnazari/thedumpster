@@ -52,7 +52,7 @@ export function useRevenueCat() {
       if (!session?.user || !RC_API_KEY) return null;
 
       const purchases = getPurchases(session.user.id);
-      const offerings = await purchases.getOfferings();
+      const offerings = await purchases.getOfferings({ currency: "USD" });
       setState((prev) => ({ ...prev, offerings }));
       return offerings;
     } catch (err) {

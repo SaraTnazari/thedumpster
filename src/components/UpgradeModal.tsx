@@ -50,11 +50,14 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
       }
 
       console.log("[Upgrade] Configuring RevenueCat for user:", session.user.id);
+      console.log("[Upgrade] API Key:", RC_API_KEY ? RC_API_KEY.substring(0, 10) + "..." : "MISSING");
       const purchases = Purchases.configure(RC_API_KEY, session.user.id);
 
-      console.log("[Upgrade] Fetching offerings...");
-      const offerings = await purchases.getOfferings();
+      console.log("[Upgrade] Fetching offerings with currency USD...");
+      const offerings = await purchases.getOfferings({ currency: "USD" });
       console.log("[Upgrade] Offerings response:", JSON.stringify(offerings, null, 2));
+      console.log("[Upgrade] Current offering:", offerings?.current);
+      console.log("[Upgrade] All offering keys:", Object.keys(offerings?.all || {}));
 
       const currentOffering = offerings?.current;
 
