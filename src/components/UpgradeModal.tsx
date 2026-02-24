@@ -40,22 +40,43 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
     try {
       const { Purchases } = await import("@revenuecat/purchases-js");
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error("Not logged in");
+      if (!session?.user) {
+        toast({
+          title: "Not signed in",
+          description: "Please sign in to upgrade.",
+          variant: "destructive",
+        });
+        return;
+      }
 
+      console.log("[Upgrade] Configuring RevenueCat for user:", session.user.id);
       const purchases = Purchases.configure(RC_API_KEY, session.user.id);
+
+      console.log("[Upgrade] Fetching offerings...");
       const offerings = await purchases.getOfferings();
+      console.log("[Upgrade] Offerings response:", JSON.stringify(offerings, null, 2));
+
       const currentOffering = offerings?.current;
 
       if (!currentOffering || currentOffering.availablePackages.length === 0) {
-        throw new Error("No subscription packages available");
+        toast({
+          title: "Subscription not available yet",
+          description: "Payment is being set up. Please try again later.",
+          variant: "destructive",
+        });
+        console.error("[Upgrade] No offerings found. Make sure RevenueCat has a Stripe product linked to an offering.");
+        return;
       }
 
       const pkg = currentOffering.availablePackages[0];
+      console.log("[Upgrade] Purchasing package:", pkg.identifier);
 
-      await purchases.purchase({
+      const result = await purchases.purchase({
         rcPackage: pkg,
         customerEmail: session.user.email || undefined,
       });
+
+      console.log("[Upgrade] Purchase result:", result);
 
       confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 } });
       toast({
@@ -64,13 +85,12 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
       });
       onOpenChange(false);
     } catch (err: any) {
-      if (err.message !== "Not logged in") {
-        toast({
-          title: "Purchase failed",
-          description: err.message || "Something went wrong",
-          variant: "destructive",
-        });
-      }
+      console.error("[Upgrade] Purchase error:", err);
+      toast({
+        title: "Purchase failed",
+        description: err.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsProcessing(false);
     }
