@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.dumpster.app',
+  appId: 'com.saranazari.dumpster',
   appName: 'Dumpster',
   webDir: 'dist',
   server: {

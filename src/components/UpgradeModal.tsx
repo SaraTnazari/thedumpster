@@ -49,15 +49,8 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
         return;
       }
 
-      console.log("[Upgrade] Configuring RevenueCat for user:", session.user.id);
-      console.log("[Upgrade] API Key:", RC_API_KEY ? RC_API_KEY.substring(0, 10) + "..." : "MISSING");
       const purchases = Purchases.configure(RC_API_KEY, session.user.id);
-
-      console.log("[Upgrade] Fetching offerings with currency USD...");
       const offerings = await purchases.getOfferings({ currency: "USD" });
-      console.log("[Upgrade] Offerings response:", JSON.stringify(offerings, null, 2));
-      console.log("[Upgrade] Current offering:", offerings?.current);
-      console.log("[Upgrade] All offering keys:", Object.keys(offerings?.all || {}));
 
       const currentOffering = offerings?.current;
 
@@ -67,19 +60,15 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
           description: "Payment is being set up. Please try again later.",
           variant: "destructive",
         });
-        console.error("[Upgrade] No offerings found. Make sure RevenueCat has a Stripe product linked to an offering.");
         return;
       }
 
       const pkg = currentOffering.availablePackages[0];
-      console.log("[Upgrade] Purchasing package:", pkg.identifier);
 
-      const result = await purchases.purchase({
+      await purchases.purchase({
         rcPackage: pkg,
         customerEmail: session.user.email || undefined,
       });
-
-      console.log("[Upgrade] Purchase result:", result);
 
       confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 } });
       toast({
@@ -88,7 +77,6 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
       });
       onOpenChange(false);
     } catch (err: any) {
-      console.error("[Upgrade] Purchase error:", err);
       toast({
         title: "Purchase failed",
         description: err.message || "Something went wrong. Please try again.",
@@ -121,7 +109,12 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
       } else {
         throw new Error(data.error || "Failed to create checkout session");
       }
-    } catch {
+    } catch (err: any) {
+      toast({
+        title: "Checkout failed",
+        description: err.message || "Could not start checkout. Please try again.",
+        variant: "destructive",
+      });
       setIsProcessing(false);
     }
   };

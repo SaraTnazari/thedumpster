@@ -178,24 +178,22 @@ const MovieDetail = () => {
   const handleAddReviewSubmit = async (rating: number, content: string) => {
     try {
       if (!id) {
-        toast({ title: "Debug", description: "Movie ID is missing from URL", variant: "destructive" });
+        toast({ title: "Error", description: "Movie ID is missing", variant: "destructive" });
         throw new Error("Movie ID missing");
       }
 
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      console.error("[REVIEW DEBUG] session:", session?.user?.id, "movieId:", id, "rating:", rating);
 
       if (sessionError || !session?.user) {
         toast({
-          title: "Debug",
-          description: "Session error: " + (sessionError?.message || "No user session found"),
+          title: "Sign in required",
+          description: sessionError?.message || "Please sign in to leave a review",
           variant: "destructive",
         });
         throw new Error("Not logged in");
       }
 
       const shittinessScore = Math.round(rating * 2);
-      console.error("[REVIEW DEBUG] shittinessScore:", shittinessScore);
 
       // Check if user already has a review for this movie
       const { data: existingReview, error: checkError } = await supabase
@@ -206,21 +204,17 @@ const MovieDetail = () => {
         .maybeSingle();
 
       if (checkError) {
-        console.error("[REVIEW DEBUG] Check existing review error:", JSON.stringify(checkError));
         toast({
-          title: "Check Error",
-          description: "Could not check existing review: " + (checkError.message || JSON.stringify(checkError)),
+          title: "Error",
+          description: checkError.message || "Could not check existing review",
           variant: "destructive",
         });
         throw new Error(checkError.message);
       }
 
-      console.error("[REVIEW DEBUG] existingReview:", existingReview);
-
       let submitError: any = null;
 
       if (existingReview) {
-        console.error("[REVIEW DEBUG] Updating existing review:", existingReview.id);
         const { error } = await supabase
           .from("reviews")
           .update({
@@ -230,7 +224,6 @@ const MovieDetail = () => {
           .eq("id", existingReview.id);
         submitError = error;
       } else {
-        console.error("[REVIEW DEBUG] Inserting new review");
         const { error } = await supabase
           .from("reviews")
           .insert({
@@ -243,17 +236,14 @@ const MovieDetail = () => {
       }
 
       if (submitError) {
-        console.error("[REVIEW DEBUG] Submit error:", JSON.stringify(submitError));
-        const msg = submitError.message || submitError.details || submitError.hint || JSON.stringify(submitError);
+        const msg = submitError.message || "Failed to submit review";
         toast({
-          title: "Submit Error",
+          title: "Error",
           description: msg,
           variant: "destructive",
         });
         throw new Error(msg);
       }
-
-      console.error("[REVIEW DEBUG] Review submitted successfully!");
 
       await fetchReviews();
 
@@ -285,7 +275,6 @@ const MovieDetail = () => {
         setUserReview(updatedReview);
       }
     } catch (err: any) {
-      console.error("[REVIEW DEBUG] Caught error:", err);
       // Only show toast if not already shown above
       if (!err.message?.includes("Movie ID") && !err.message?.includes("logged in")) {
         toast({
@@ -346,7 +335,7 @@ const MovieDetail = () => {
         <ArrowLeft size={24} />
       </button>
 
-      <div className="py-6 space-y-6 pt-safe" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 24px)' }}>
+      <div className="py-6 space-y-6">
         {/* Movie Details */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

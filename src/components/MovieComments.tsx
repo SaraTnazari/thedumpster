@@ -55,30 +55,38 @@ export const MovieComments = ({ movieId }: MovieCommentsProps) => {
     const fetchComments = async () => {
       try {
         setLoading(true);
-        const { data, error, count } = await supabase
+        // Fetch comments without profile join (avoids FK issues)
+        const { data: commentsData, error, count } = await supabase
           .from('comments')
-          .select(
-            `
-            id,
-            content,
-            created_at,
-            user_id,
-            profiles:user_id(username, avatar_url)
-          `,
-            { count: 'exact' }
-          )
+          .select('id, content, created_at, user_id', { count: 'exact' })
           .eq('movie_id', movieId)
           .order('created_at', { ascending: true });
 
         if (error) {
-          console.error('Error fetching comments:', error);
-          toast({
-            title: 'Error',
-            description: 'Failed to load comments',
-            variant: 'destructive',
-          });
+          setComments([]);
+          setCommentCount(0);
           return;
         }
+
+        // Fetch profile info for comment authors
+        const userIds = [...new Set((commentsData || []).map(c => c.user_id))];
+        let profileMap: Record<string, { username: string; avatar_url: string | null }> = {};
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, username, avatar_url')
+            .in('id', userIds);
+          if (profiles) {
+            profileMap = Object.fromEntries(
+              profiles.map(p => [p.id, { username: p.username, avatar_url: p.avatar_url }])
+            );
+          }
+        }
+
+        const data = (commentsData || []).map(c => ({
+          ...c,
+          profiles: profileMap[c.user_id] || null,
+        }));
 
         setComments(data || []);
         setCommentCount(count || 0);

@@ -249,7 +249,7 @@ const Post = () => {
   if (loading) {
     return (
       <AppLayout>
-        <div className="pb-6 space-y-6 pt-safe" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }}>
+        <div className="pb-6 space-y-6">
           <div className="flex items-center justify-center min-h-[200px]">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
@@ -261,7 +261,7 @@ const Post = () => {
   if (!isLoggedIn) {
     return (
       <AppLayout>
-        <div className="pb-6 space-y-6 pt-safe" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }}>
+        <div className="pb-6 space-y-6">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -297,7 +297,7 @@ const Post = () => {
 
   return (
     <AppLayout>
-      <div className="pb-6 space-y-6 flex flex-col pt-safe" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }}>
+      <div className="pb-6 space-y-6 flex flex-col">
 
         {/* Review Limit Warning */}
         <ReviewLimitWarning onUpgrade={() => setShowUpgrade(true)} />

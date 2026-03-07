@@ -178,14 +178,14 @@ const Index = () => {
 
   return (
     <AppLayout>
-      {/* Header Buttons */}
-      <div className="fixed top-0 right-0 z-50 p-4 pt-safe flex items-center gap-2">
-        <Link to="/profile" className="p-2 rounded-full hover:bg-white/10 transition-colors">
-          <User className="w-6 h-6 text-primary" />
-        </Link>
-      </div>
+      <div className="pb-32 space-y-8">
+        {/* Profile Button Row */}
+        <div className="flex justify-end -mb-4">
+          <Link to="/profile" className="p-2 rounded-full bg-muted/60 hover:bg-muted transition-colors">
+            <User className="w-5 h-5 text-primary" />
+          </Link>
+        </div>
 
-      <div className="pb-32 space-y-8 pt-safe" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }}>
         {/* Countdown Hero */}
         <CountdownCard />
 

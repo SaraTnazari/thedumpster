@@ -67,7 +67,7 @@ const Search = () => {
 
   return (
     <AppLayout>
-      <div className="py-6 space-y-6 pt-safe" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 24px)' }}>
+      <div className="py-6 space-y-6">
         <motion.h2
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}

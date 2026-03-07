@@ -32,3 +32,14 @@ dist-ssr
 whatdidIwatch/
 .vercel
 .env*.local
+
+# Unrelated project files
+comm-triage-site/
+communication-triage-site/
+ct-landing.html
+portfolio-site/
+sara-portfolio/
+portfolio.html
+sara.jpg
+Sara_Nazari_Resume.pdf
+APP_STORE_GUIDE.md

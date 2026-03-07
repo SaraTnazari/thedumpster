@@ -7,6 +7,9 @@ import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-ro
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { supabase } from "@/integrations/supabase/client";
 import OnboardingFlow from "@/components/OnboardingFlow";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import { initializeAdMob } from "@/lib/admob";
+import { AdManager } from "@/components/AdManager";
 import Index from "./pages/Index";
 import Search from "./pages/Search";
 import Post from "./pages/Post";
@@ -77,6 +80,11 @@ const App = () => {
     configureStatusBar();
   }, []);
 
+  // Initialize AdMob
+  useEffect(() => {
+    initializeAdMob();
+  }, []);
+
   useEffect(() => {
     const handleBlur = (e: FocusEvent) => {
       const target = e.target as HTMLElement;
@@ -97,38 +105,41 @@ const App = () => {
   }, []);
 
   return (
-    <div className="h-screen overflow-hidden">
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          {showOnboarding && (
-            <OnboardingFlow onComplete={() => setShowOnboarding(false)} />
-          )}
-          <BrowserRouter>
-            <AuthGuard>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/search" element={<Search />} />
-                <Route path="/post" element={<Post />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/profile/edit" element={<EditProfile />} />
-                <Route path="/profile/history" element={<UserHistory />} />
-                <Route path="/hall-of-shame" element={<HallOfShame />} />
-                <Route path="/badges" element={<MyBadges />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/leaderboard" element={<Leaderboard />} />
-                <Route path="/movie/:id" element={<MovieDetail />} />
-                <Route path="/discover" element={<Discover />} />
-                <Route path="/user/:userId" element={<UserProfile />} />
-                <Route path="/billing" element={<BillingSettings />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </AuthGuard>
-          </BrowserRouter>
-        </TooltipProvider>
-      </QueryClientProvider>
-    </div>
+    <ErrorBoundary>
+      <div className="h-screen overflow-hidden">
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            {showOnboarding && (
+              <OnboardingFlow onComplete={() => setShowOnboarding(false)} />
+            )}
+            <BrowserRouter>
+              <AdManager />
+              <AuthGuard>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/search" element={<Search />} />
+                  <Route path="/post" element={<Post />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/profile/edit" element={<EditProfile />} />
+                  <Route path="/profile/history" element={<UserHistory />} />
+                  <Route path="/hall-of-shame" element={<HallOfShame />} />
+                  <Route path="/badges" element={<MyBadges />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/leaderboard" element={<Leaderboard />} />
+                  <Route path="/movie/:id" element={<MovieDetail />} />
+                  <Route path="/discover" element={<Discover />} />
+                  <Route path="/user/:userId" element={<UserProfile />} />
+                  <Route path="/billing" element={<BillingSettings />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </AuthGuard>
+            </BrowserRouter>
+          </TooltipProvider>
+        </QueryClientProvider>
+      </div>
+    </ErrorBoundary>
   );
 };
 

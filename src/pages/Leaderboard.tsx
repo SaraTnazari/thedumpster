@@ -173,7 +173,7 @@ const Leaderboard = () => {
 
   return (
     <AppLayout>
-      <div className="pb-6 space-y-8 pt-safe" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 16px)' }}>
+      <div className="pb-6 space-y-8">
 
         {loading ? (
           <div className="flex items-center justify-center min-h-[400px]">

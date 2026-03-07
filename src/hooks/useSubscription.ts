@@ -40,7 +40,7 @@ export function useSubscription() {
               return;
             }
           } catch (rcError) {
-            // RevenueCat failed, fall through to Supabase check
+            console.warn("[useSubscription] RevenueCat check failed, falling back to Supabase:", rcError);
           }
         }
 
@@ -62,6 +62,7 @@ export function useSubscription() {
 
         setState({ plan, status, loading: false, isPro });
       } catch (err) {
+        console.error("[useSubscription] Failed to fetch subscription status:", err);
         setState({ plan: "free", status: "active", loading: false, isPro: false });
       }
     };

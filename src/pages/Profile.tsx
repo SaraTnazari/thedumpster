@@ -183,7 +183,7 @@ const Profile = () => {
 
   return (
     <AppLayout>
-      <div className="py-6 space-y-6 pt-safe" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 24px)' }}>
+      <div className="py-6 space-y-6">
         {/* Avatar & Identity */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
