@@ -12,8 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { isNative } from "@/lib/native";
 
 const RC_API_KEY = import.meta.env.VITE_REVENUECAT_API_KEY || "";
-const PRIVACY_POLICY_URL = "https://saranazari.github.io/thedumpster/privacy-policy.html";
-const TERMS_OF_USE_URL = "https://saranazari.github.io/thedumpster/terms-of-use.html";
+const PRIVACY_POLICY_URL = "https://raw.githubusercontent.com/SaraTnazari/thedumpster/main/privacy-policy.html";
+const TERMS_OF_USE_URL = "https://raw.githubusercontent.com/SaraTnazari/thedumpster/main/terms-of-use.html";
 
 interface UpgradeModalProps {
   open: boolean;
