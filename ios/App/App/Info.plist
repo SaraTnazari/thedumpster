@@ -58,6 +58,10 @@
 	</array>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>This allows Dumpster to show you more relevant ads.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Dumpster needs camera access to take a profile photo.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Dumpster needs photo library access to choose a profile photo.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSPrivacyTracking</key>

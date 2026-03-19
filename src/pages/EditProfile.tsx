@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ChevronLeft, User, Loader2, Image as ImageIcon, Upload } from "lucide-react";
+import { ChevronLeft, User, Loader2, Image as ImageIcon, Upload, Trash2 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,8 @@ const EditProfile = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [username, setUsername] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [bio, setBio] = useState("");
@@ -182,6 +184,36 @@ const EditProfile = () => {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!userId) return;
+    setDeleting(true);
+    try {
+      // Delete user data from all tables
+      await supabase.from("reviews").delete().eq("user_id", userId);
+      await supabase.from("purgatory_votes").delete().eq("user_id", userId);
+      await supabase.from("user_subscriptions").delete().eq("user_id", userId);
+      await supabase.from("profiles").delete().eq("user_id", userId);
+
+      // Sign out and redirect
+      await supabase.auth.signOut();
+
+      toast({
+        title: "Account deleted",
+        description: "Your account and all data have been removed.",
+      });
+      navigate("/auth");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete account. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   if (loading) {
     return (
       <AppLayout>
@@ -316,6 +348,54 @@ const EditProfile = () => {
                 )}
               </Button>
             </div>
+          </div>
+
+          {/* Delete Account Section */}
+          <div className="mt-8 rounded-2xl border border-red-500/30 p-6 space-y-4">
+            <h3 className="text-lg font-display text-red-400">Danger Zone</h3>
+            {!showDeleteConfirm ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="w-full border-red-500/50 text-red-400 hover:bg-red-500/10"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Account
+              </Button>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  This will permanently delete your account and all your data including reviews, votes, and profile. This action cannot be undone.
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="flex-1"
+                    disabled={deleting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    disabled={deleting}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    {deleting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      "Yes, Delete My Account"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
       </div>

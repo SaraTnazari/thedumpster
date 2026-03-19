@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Purchases } from "@revenuecat/purchases-js";
+import { isNative } from "@/lib/native";
 
 const RC_API_KEY = import.meta.env.VITE_REVENUECAT_API_KEY || "";
 
@@ -31,9 +31,24 @@ export function useSubscription() {
         // Try RevenueCat first if configured
         if (RC_API_KEY) {
           try {
-            const purchases = Purchases.configure(RC_API_KEY, session.user.id);
-            const customerInfo = await purchases.getCustomerInfo();
-            const isPro = customerInfo.entitlements.active["Dumpster Pro"] !== undefined;
+            let isPro = false;
+
+            if (isNative) {
+              // Use native Capacitor plugin on iOS
+              const { Purchases } = await import("@revenuecat/purchases-capacitor");
+              await Purchases.configure({
+                apiKey: RC_API_KEY,
+                appUserID: session.user.id,
+              });
+              const { customerInfo } = await Purchases.getCustomerInfo();
+              isPro = customerInfo.entitlements.active["Dumpster Pro"] !== undefined;
+            } else {
+              // Use JS SDK on web
+              const { Purchases } = await import("@revenuecat/purchases-js");
+              const purchases = Purchases.configure(RC_API_KEY, session.user.id);
+              const customerInfo = await purchases.getCustomerInfo();
+              isPro = customerInfo.entitlements.active["Dumpster Pro"] !== undefined;
+            }
 
             if (isPro) {
               setState({ plan: "pro", status: "active", loading: false, isPro: true });

@@ -1,17 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { Purchases } from "@revenuecat/purchases-js";
 import { supabase } from "@/integrations/supabase/client";
+import { isNative } from "@/lib/native";
 
 const RC_API_KEY = import.meta.env.VITE_REVENUECAT_API_KEY || "";
-
-let purchasesInstance: Purchases | null = null;
-
-function getPurchases(userId: string): Purchases {
-  if (!purchasesInstance) {
-    purchasesInstance = Purchases.configure(RC_API_KEY, userId);
-  }
-  return purchasesInstance;
-}
 
 interface RevenueCatState {
   isPro: boolean;
@@ -34,11 +25,24 @@ export function useRevenueCat() {
         return;
       }
 
-      const purchases = getPurchases(session.user.id);
-      const customerInfo = await purchases.getCustomerInfo();
+      let isPro = false;
 
-      // Check for "pro" entitlement (configure this in RevenueCat dashboard)
-      const isPro = customerInfo.entitlements.active["Dumpster Pro"] !== undefined;
+      if (isNative) {
+        // Use native Capacitor plugin on iOS
+        const { Purchases } = await import("@revenuecat/purchases-capacitor");
+        await Purchases.configure({
+          apiKey: RC_API_KEY,
+          appUserID: session.user.id,
+        });
+        const { customerInfo } = await Purchases.getCustomerInfo();
+        isPro = customerInfo.entitlements.active["Dumpster Pro"] !== undefined;
+      } else {
+        // Use JS SDK on web
+        const { Purchases } = await import("@revenuecat/purchases-js");
+        const purchases = Purchases.configure(RC_API_KEY, session.user.id);
+        const customerInfo = await purchases.getCustomerInfo();
+        isPro = customerInfo.entitlements.active["Dumpster Pro"] !== undefined;
+      }
 
       setState((prev) => ({ ...prev, isPro, loading: false }));
     } catch (err) {
@@ -51,8 +55,17 @@ export function useRevenueCat() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user || !RC_API_KEY) return null;
 
-      const purchases = getPurchases(session.user.id);
-      const offerings = await purchases.getOfferings({ currency: "USD" });
+      let offerings: any = null;
+
+      if (isNative) {
+        const { Purchases } = await import("@revenuecat/purchases-capacitor");
+        offerings = await Purchases.getOfferings();
+      } else {
+        const { Purchases } = await import("@revenuecat/purchases-js");
+        const purchases = Purchases.configure(RC_API_KEY, session.user.id);
+        offerings = await purchases.getOfferings({ currency: "USD" });
+      }
+
       setState((prev) => ({ ...prev, offerings }));
       return offerings;
     } catch (err) {
@@ -64,15 +77,21 @@ export function useRevenueCat() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user || !RC_API_KEY) throw new Error("Not logged in");
 
-    const purchases = getPurchases(session.user.id);
-    const result = await purchases.purchase({
-      rcPackage,
-      customerEmail: email || session.user.email,
-    });
-
-    // Refresh entitlements after purchase
-    await checkEntitlements();
-    return result;
+    if (isNative) {
+      const { Purchases } = await import("@revenuecat/purchases-capacitor");
+      const result = await Purchases.purchasePackage({ aPackage: rcPackage });
+      await checkEntitlements();
+      return result;
+    } else {
+      const { Purchases } = await import("@revenuecat/purchases-js");
+      const purchases = Purchases.configure(RC_API_KEY, session.user.id);
+      const result = await purchases.purchase({
+        rcPackage: rcPackage,
+        customerEmail: email || session.user.email,
+      });
+      await checkEntitlements();
+      return result;
+    }
   }, [checkEntitlements]);
 
   useEffect(() => {

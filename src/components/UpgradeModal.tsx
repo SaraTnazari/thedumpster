@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Crown, X, Check, Loader2 } from "lucide-react";
+import { Crown, X, Check, Loader2, ExternalLink } from "lucide-react";
 import confetti from "canvas-confetti";
 import {
   Dialog,
@@ -9,8 +9,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { isNative } from "@/lib/native";
 
 const RC_API_KEY = import.meta.env.VITE_REVENUECAT_API_KEY || "";
+const PRIVACY_POLICY_URL = "https://saranazari.github.io/thedumpster/privacy-policy.html";
+const TERMS_OF_USE_URL = "https://saranazari.github.io/thedumpster/terms-of-use.html";
 
 interface UpgradeModalProps {
   open: boolean;
@@ -35,7 +38,70 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
     }
   }, [open]);
 
-  const handleRevenueCatPurchase = async () => {
+  /** Native iOS purchase via RevenueCat Capacitor plugin (StoreKit) */
+  const handleNativePurchase = async () => {
+    setIsProcessing(true);
+    try {
+      const { Purchases } = await import("@revenuecat/purchases-capacitor");
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        toast({
+          title: "Not signed in",
+          description: "Please sign in to upgrade.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Configure the native SDK
+      await Purchases.configure({
+        apiKey: RC_API_KEY,
+        appUserID: session.user.id,
+      });
+
+      // Fetch offerings from StoreKit
+      const offerings = await Purchases.getOfferings();
+      const currentOffering = offerings?.current;
+
+      if (!currentOffering || currentOffering.availablePackages.length === 0) {
+        toast({
+          title: "Subscription not available yet",
+          description: "Payment is being set up. Please try again later.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const pkg = currentOffering.availablePackages[0];
+
+      // This triggers the native Apple StoreKit purchase sheet
+      await Purchases.purchasePackage({ aPackage: pkg });
+
+      confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 } });
+      toast({
+        title: "Welcome to Pro!",
+        description: "Your subscription is now active.",
+      });
+      onOpenChange(false);
+    } catch (err: any) {
+      // RevenueCat returns userCancelled flag when user dismisses the sheet
+      if (err?.userCancelled) {
+        // User cancelled — do nothing
+        return;
+      }
+      toast({
+        title: "Purchase failed",
+        description: err.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  /** Web purchase via RevenueCat JS SDK */
+  const handleRevenueCatWebPurchase = async () => {
     setIsProcessing(true);
     try {
       const { Purchases } = await import("@revenuecat/purchases-js");
@@ -51,7 +117,6 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
 
       const purchases = Purchases.configure(RC_API_KEY, session.user.id);
       const offerings = await purchases.getOfferings({ currency: "USD" });
-
       const currentOffering = offerings?.current;
 
       if (!currentOffering || currentOffering.availablePackages.length === 0) {
@@ -64,7 +129,6 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
       }
 
       const pkg = currentOffering.availablePackages[0];
-
       await purchases.purchase({
         rcPackage: pkg,
         customerEmail: session.user.email || undefined,
@@ -120,9 +184,14 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
   };
 
   const handlePurchase = () => {
-    if (RC_API_KEY) {
-      handleRevenueCatPurchase();
+    if (isNative) {
+      // On iOS, use the native Capacitor plugin (StoreKit)
+      handleNativePurchase();
+    } else if (RC_API_KEY) {
+      // On web with RC key, use the JS SDK
+      handleRevenueCatWebPurchase();
     } else {
+      // Fallback to Stripe on web
       handleStripePurchase();
     }
   };
@@ -130,6 +199,19 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
   const handleClose = () => {
     onOpenChange(false);
     setIsProcessing(false);
+  };
+
+  const openLink = async (url: string) => {
+    if (isNative) {
+      try {
+        const { Browser } = await import("@capacitor/browser");
+        await Browser.open({ url });
+      } catch {
+        window.open(url, "_blank");
+      }
+    } else {
+      window.open(url, "_blank");
+    }
   };
 
   return (
@@ -176,6 +258,19 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
             ))}
           </div>
 
+          {/* Subscription details (required by Apple Guideline 3.1.2) */}
+          <div className="bg-muted/50 rounded-xl p-4 space-y-2">
+            <p className="text-sm font-semibold text-foreground">
+              Dumpster Pro — Auto-Renewable Subscription
+            </p>
+            <p className="text-xs text-muted-foreground">
+              $2.99/month. Payment will be charged to your Apple ID account at confirmation of purchase.
+              Subscription automatically renews unless canceled at least 24 hours before the end of the current period.
+              Your account will be charged for renewal within 24 hours prior to the end of the current period.
+              You can manage and cancel your subscriptions by going to your App Store account settings after purchase.
+            </p>
+          </div>
+
           {/* RevenueCat mount point */}
           <div ref={purchaseContainerRef} id="rc-purchase-container" />
 
@@ -193,6 +288,23 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
               "Upgrade to Pro — $2.99/mo"
             )}
           </Button>
+
+          {/* Legal links (required by Apple Guideline 3.1.2) */}
+          <div className="flex items-center justify-center gap-4">
+            <button
+              onClick={() => openLink(TERMS_OF_USE_URL)}
+              className="text-xs text-muted-foreground hover:text-primary underline flex items-center gap-1"
+            >
+              Terms of Use <ExternalLink className="w-3 h-3" />
+            </button>
+            <span className="text-xs text-muted-foreground">|</span>
+            <button
+              onClick={() => openLink(PRIVACY_POLICY_URL)}
+              className="text-xs text-muted-foreground hover:text-primary underline flex items-center gap-1"
+            >
+              Privacy Policy <ExternalLink className="w-3 h-3" />
+            </button>
+          </div>
 
           <p className="text-center text-xs text-muted-foreground">
             Secure payment. Cancel anytime.
