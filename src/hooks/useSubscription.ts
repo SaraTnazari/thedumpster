@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isNative } from "@/lib/native";
-
-const RC_API_KEY = import.meta.env.VITE_REVENUECAT_API_KEY || "";
+import { checkProOwnership } from "@/lib/revenuecat";
 
 interface SubscriptionState {
   plan: "free" | "pro";
@@ -28,34 +27,16 @@ export function useSubscription() {
           return;
         }
 
-        // Try RevenueCat first if configured
-        if (RC_API_KEY) {
+        // On native iOS, check StoreKit purchase history
+        if (isNative) {
           try {
-            let isPro = false;
-
-            if (isNative) {
-              // Use native Capacitor plugin on iOS
-              const { Purchases } = await import("@revenuecat/purchases-capacitor");
-              await Purchases.configure({
-                apiKey: RC_API_KEY,
-                appUserID: session.user.id,
-              });
-              const { customerInfo } = await Purchases.getCustomerInfo();
-              isPro = customerInfo.entitlements.active["Dumpster Pro"] !== undefined;
-            } else {
-              // Use JS SDK on web
-              const { Purchases } = await import("@revenuecat/purchases-js");
-              const purchases = Purchases.configure(RC_API_KEY, session.user.id);
-              const customerInfo = await purchases.getCustomerInfo();
-              isPro = customerInfo.entitlements.active["Dumpster Pro"] !== undefined;
-            }
-
+            const isPro = await checkProOwnership();
             if (isPro) {
               setState({ plan: "pro", status: "active", loading: false, isPro: true });
               return;
             }
-          } catch (rcError) {
-            console.warn("[useSubscription] RevenueCat check failed, falling back to Supabase:", rcError);
+          } catch (err) {
+            console.warn("[useSubscription] StoreKit check failed, falling back to Supabase:", err);
           }
         }
 

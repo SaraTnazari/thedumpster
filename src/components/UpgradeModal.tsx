@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Crown, X, Check, Loader2, ExternalLink } from "lucide-react";
 import confetti from "canvas-confetti";
@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { isNative } from "@/lib/native";
+import { purchaseProLifetime } from "@/lib/revenuecat";
 
-const RC_API_KEY = import.meta.env.VITE_REVENUECAT_API_KEY || "";
 const PRIVACY_POLICY_URL = "https://raw.githubusercontent.com/SaraTnazari/thedumpster/main/privacy-policy.html";
 const TERMS_OF_USE_URL = "https://raw.githubusercontent.com/SaraTnazari/thedumpster/main/terms-of-use.html";
 
@@ -23,7 +23,6 @@ interface UpgradeModalProps {
 export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
-  const purchaseContainerRef = useRef<HTMLDivElement>(null);
 
   const benefits = [
     "Unlimited Reviews (no daily limit)",
@@ -38,56 +37,34 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
     }
   }, [open]);
 
-  /** Native iOS purchase via RevenueCat Capacitor plugin (StoreKit) */
+  /** Native iOS purchase via StoreKit 2 */
   const handleNativePurchase = async () => {
     setIsProcessing(true);
     try {
-      const { Purchases } = await import("@revenuecat/purchases-capacitor");
-
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        toast({
-          title: "Not signed in",
-          description: "Please sign in to upgrade.",
-          variant: "destructive",
-        });
+        toast({ title: "Not signed in", description: "Please sign in to upgrade.", variant: "destructive" });
         return;
       }
 
-      // Configure the native SDK
-      await Purchases.configure({
-        apiKey: RC_API_KEY,
-        appUserID: session.user.id,
-      });
+      const success = await purchaseProLifetime();
 
-      // Fetch offerings from StoreKit
-      const offerings = await Purchases.getOfferings();
-      const currentOffering = offerings?.current;
+      if (success) {
+        // Record the purchase in Supabase
+        await supabase.from("user_subscriptions").upsert({
+          user_id: session.user.id,
+          plan: "pro",
+          status: "active",
+        }, { onConflict: "user_id" });
 
-      if (!currentOffering || currentOffering.availablePackages.length === 0) {
-        toast({
-          title: "Subscription not available yet",
-          description: "Payment is being set up. Please try again later.",
-          variant: "destructive",
-        });
-        return;
+        confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 } });
+        toast({ title: "Welcome to Pro!", description: "Your lifetime access is now active." });
+        onOpenChange(false);
       }
-
-      const pkg = currentOffering.availablePackages[0];
-
-      // This triggers the native Apple StoreKit purchase sheet
-      await Purchases.purchasePackage({ aPackage: pkg });
-
-      confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 } });
-      toast({
-        title: "Welcome to Pro!",
-        description: "Your subscription is now active.",
-      });
-      onOpenChange(false);
     } catch (err: any) {
-      // RevenueCat returns userCancelled flag when user dismisses the sheet
-      if (err?.userCancelled) {
-        // User cancelled — do nothing
+      console.error("[IAP] Purchase error:", err);
+      // StoreKit returns error code 2 for user cancellation
+      if (err?.message?.includes("cancel") || err?.code === 2 || err?.code === "2") {
         return;
       }
       toast({
@@ -100,57 +77,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
     }
   };
 
-  /** Web purchase via RevenueCat JS SDK */
-  const handleRevenueCatWebPurchase = async () => {
-    setIsProcessing(true);
-    try {
-      const { Purchases } = await import("@revenuecat/purchases-js");
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        toast({
-          title: "Not signed in",
-          description: "Please sign in to upgrade.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const purchases = Purchases.configure(RC_API_KEY, session.user.id);
-      const offerings = await purchases.getOfferings({ currency: "USD" });
-      const currentOffering = offerings?.current;
-
-      if (!currentOffering || currentOffering.availablePackages.length === 0) {
-        toast({
-          title: "Subscription not available yet",
-          description: "Payment is being set up. Please try again later.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const pkg = currentOffering.availablePackages[0];
-      await purchases.purchase({
-        rcPackage: pkg,
-        customerEmail: session.user.email || undefined,
-      });
-
-      confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 } });
-      toast({
-        title: "Welcome to Pro!",
-        description: "Your subscription is now active.",
-      });
-      onOpenChange(false);
-    } catch (err: any) {
-      toast({
-        title: "Purchase failed",
-        description: err.message || "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
+  /** Web purchase via Stripe */
   const handleStripePurchase = async () => {
     setIsProcessing(true);
     try {
@@ -167,7 +94,6 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
       });
 
       const data = await response.json();
-
       if (data.url) {
         window.location.href = data.url;
       } else {
@@ -185,13 +111,8 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
 
   const handlePurchase = () => {
     if (isNative) {
-      // On iOS, use the native Capacitor plugin (StoreKit)
       handleNativePurchase();
-    } else if (RC_API_KEY) {
-      // On web with RC key, use the JS SDK
-      handleRevenueCatWebPurchase();
     } else {
-      // Fallback to Stripe on web
       handleStripePurchase();
     }
   };
@@ -258,21 +179,16 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
             ))}
           </div>
 
-          {/* Subscription details (required by Apple Guideline 3.1.2) */}
+          {/* Purchase details */}
           <div className="bg-muted/50 rounded-xl p-4 space-y-2">
             <p className="text-sm font-semibold text-foreground">
-              Dumpster Pro — Auto-Renewable Subscription
+              Dumpster Pro — Lifetime Access
             </p>
             <p className="text-xs text-muted-foreground">
-              $2.99/month. Payment will be charged to your Apple ID account at confirmation of purchase.
-              Subscription automatically renews unless canceled at least 24 hours before the end of the current period.
-              Your account will be charged for renewal within 24 hours prior to the end of the current period.
-              You can manage and cancel your subscriptions by going to your App Store account settings after purchase.
+              One-time purchase of $4.99. Pay once and enjoy Pro features forever.
+              No subscriptions, no recurring charges. Payment will be charged to your Apple ID account at confirmation of purchase.
             </p>
           </div>
-
-          {/* RevenueCat mount point */}
-          <div ref={purchaseContainerRef} id="rc-purchase-container" />
 
           <Button
             disabled={isProcessing}
@@ -285,11 +201,11 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
                 <span>Processing...</span>
               </div>
             ) : (
-              "Upgrade to Pro — $2.99/mo"
+              "Upgrade to Pro — $4.99"
             )}
           </Button>
 
-          {/* Legal links (required by Apple Guideline 3.1.2) */}
+          {/* Legal links */}
           <div className="flex items-center justify-center gap-4">
             <button
               onClick={() => openLink(TERMS_OF_USE_URL)}
@@ -307,7 +223,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
           </div>
 
           <p className="text-center text-xs text-muted-foreground">
-            Secure payment. Cancel anytime.
+            Secure payment. One-time purchase.
           </p>
         </motion.div>
       </DialogContent>
