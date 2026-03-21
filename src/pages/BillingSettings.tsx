@@ -220,8 +220,8 @@ const BillingSettings = () => {
                   <h3 className="font-display text-foreground text-lg">Pro</h3>
                 </div>
                 <div className="text-right">
-                  <span className="text-2xl font-display text-foreground">$2.99</span>
-                  <span className="text-xs text-muted-foreground">/mo</span>
+                  <span className="text-2xl font-display text-foreground">$4.99</span>
+                  <span className="text-xs text-muted-foreground"> one-time</span>
                 </div>
               </div>
               <div className="space-y-2">

@@ -46,7 +46,7 @@ export function SubscriptionGate({
               className="gradient-fire text-primary-foreground font-display tracking-wider rounded-xl hover:box-glow-pink transition-all duration-300"
             >
               <Crown className="w-4 h-4 mr-2" />
-              Upgrade to Pro — $2.99/mo
+              Upgrade to Pro — $4.99
             </Button>
           </div>
         </motion.div>
